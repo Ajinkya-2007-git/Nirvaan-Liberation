@@ -1,0 +1,96 @@
+/* Pulls in Tailwind's utility classes (flex, p-4, bg-blue-600, etc.) */
+@import "tailwindcss";
+
+/* Fonts (Sora / IBM Plex Sans / IBM Plex Mono) are loaded via
+   <link> tags in index.html instead of an @import here — a second
+   @import after Tailwind's own violates CSS's strict import-order
+   rule and Vite warns about it. Loading from index.html also lets
+   the browser start fetching fonts immediately, before this CSS
+   file even finishes loading. */
+
+/* Tailwind v4's way of defining custom design tokens: anything
+   declared inside @theme becomes usable as a utility class, e.g.
+   --color-ink becomes "bg-ink" / "text-ink" automatically. */
+@theme {
+  /* A soft, teal-tinted white — not stark #FFFFFF. The page was
+     reading as "just white with small teal accents" rather than a
+     cohesive tinted theme; giving the background itself a whisper
+     of the logo's own teal ties the whole page together instead of
+     confining that color to a few small badges and icons. */
+  --color-ink: #eef7f6;
+  /* A touch more teal than --color-ink, so cards still read as
+     "raised" above the page rather than blending into it. */
+  --color-panel: #e2f0ee;
+  /* Soft teal-grey borders, matching the new tinted surfaces instead
+     of the previous plain navy-grey. */
+  --color-hairline: #c3ddd8;
+  /* Primary text — a near-black navy (sampled from the logo's own
+     shield color, darkened for text-level contrast), not pure
+     #000000, which tends to look harsher than a very dark, slightly
+     warm near-black. */
+  --color-paper: #0b1220;
+  /* Secondary/label text — medium navy-grey. */
+  --color-muted: #5b6b82;
+  /* Primary interactive color — sampled directly from the logo's
+     teal wave (pixel-sampled, not eyeballed) rather than an
+     arbitrary decorative pick. Map pin colors (see mapIcons.ts) are
+     separate, deliberately hardcoded constants, not tied to this
+     variable, since pin colors carry functional meaning (which
+     responder type) and shouldn't shift just because the brand
+     accent does. */
+  --color-signal: #2fb0ac;
+  /* The logo's navy shield color — a secondary structural accent. */
+  --color-navy: #1c4e7c;
+  /* These two reuse the EXACT urgency colors from mapIcons.ts
+     (critical=red, high=orange) — the "Emergency SOS" and "Request
+     Help" buttons borrow meaning straight from the map's own legend
+     instead of introducing new arbitrary brand colors. These carry
+     functional meaning (severity), not brand decoration, so they
+     don't shift with the rest of the theme. */
+  --color-signal-red: #dc2626;
+  --color-signal-orange: #ea580c;
+
+  --font-display: 'Sora', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-data: 'IBM Plex Mono', monospace;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-body);
+}
+
+/* DARK MODE — overrides the same variable names for anything inside
+   an element carrying data-theme="dark" (set on <html> — see
+   useTheme.ts). Because every component uses the SAME utility
+   classes (bg-ink, text-paper, etc.) regardless of which mode is
+   active, this one block is enough to re-theme the entire app —
+   nothing in any page needs a "light version" / "dark version" of
+   its own markup. Default (no attribute set) stays the current
+   teal-tinted light theme, per the requirement that light stays the
+   default experience. */
+[data-theme='dark'] {
+  --color-ink: #0b1220;
+  --color-panel: #101b2e;
+  --color-hairline: #223349;
+  --color-paper: #edeff3;
+  --color-muted: #93a5bd;
+  /* --color-signal, --color-navy, and the urgency colors are left
+     unchanged in dark mode on purpose — they already have enough
+     contrast against a dark background, and keeping brand/urgency
+     colors identical across modes means "teal" and "critical red"
+     mean the same thing regardless of which theme someone's using. */
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+}
+
+/* Visible keyboard focus on every interactive element — easy to
+   forget on a dark theme, where a default browser focus ring can
+   become nearly invisible against a dark background. */
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}

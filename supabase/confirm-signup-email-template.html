@@ -1,0 +1,25 @@
+<!--
+  This is NOT part of the app's codebase — it lives entirely inside
+  Supabase's dashboard (Authentication → Email Templates → Confirm
+  signup → Source). Supabase fills in the {{ .Token }} part with a
+  real 6-digit code every time someone signs up, then emails the
+  result. Nothing in our React code needs to change for this.
+-->
+
+<h2>Confirm your Nirvaan account</h2>
+
+<p>Enter this code in the app to finish signing up:</p>
+
+<!--
+  {{ .Token }} is a Supabase "template variable" — a placeholder
+  that gets swapped out for a real value right before sending.
+  This one becomes the actual 6-digit one-time code, unique to
+  this specific signup.
+-->
+<h1 style="letter-spacing: 4px; font-size: 36px;">{{ .Token }}</h1>
+
+<p>This code expires shortly, so enter it soon after opening this email.</p>
+
+<p style="color: #888; font-size: 12px;">
+  If you didn't try to sign up for Nirvaan, you can safely ignore this email.
+</p>
