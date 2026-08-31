@@ -8,10 +8,12 @@
 
 import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 
 export function NgoCompleteProfile() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -69,14 +71,15 @@ export function NgoCompleteProfile() {
 
     setSubmitting(true);
 
-    // The organization's display name was saved as "full_name" on
-    // their profiles row during signup (see NgoSignup.tsx for why
-    // it's stored under that key) — pull it back out here.
-    const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single();
+    // The organization's display name AND phone were both saved on
+    // their profiles row during signup (see NgoSignup.tsx) — pull
+    // them both back out here, since neither exists anywhere else.
+    const { data: profile } = await supabase.from('profiles').select('full_name, phone').eq('id', userId).single();
 
     const { error: insertError } = await supabase.from('ngos').insert({
       id: userId,
       org_name: profile?.full_name ?? 'Unnamed organization',
+      contact_phone: profile?.phone,
       registration_number: registrationNumber || null,
       area_of_operation: areaOfOperation,
       resources_available: resourcesAvailable,
@@ -101,12 +104,12 @@ export function NgoCompleteProfile() {
     <div className="min-h-screen bg-ink">
       <Header />
       <div className="mx-auto max-w-lg px-6 py-10">
-        <h1 className="font-display text-2xl font-semibold text-paper">Organization details</h1>
-        <p className="mt-1 text-sm text-muted">Step 2 of 2 — an admin reviews this before your organization goes live.</p>
+        <h1 className="font-display text-2xl font-semibold text-paper">{t('ngoCompleteProfile.title')}</h1>
+        <p className="mt-1 text-sm text-muted">{t('ngoCompleteProfile.step2')}</p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
           <div>
-            <label className="block text-sm font-medium text-paper">Registration number (optional)</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoCompleteProfile.registrationNumber')}</label>
             <input
               type="text"
               value={registrationNumber}
@@ -116,7 +119,7 @@ export function NgoCompleteProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Area of operation</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoCompleteProfile.areaOfOperation')}</label>
             <input
               type="text"
               required
@@ -128,7 +131,7 @@ export function NgoCompleteProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Resources available</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoCompleteProfile.resourcesAvailable')}</label>
             <textarea
               required
               rows={3}
@@ -140,14 +143,14 @@ export function NgoCompleteProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Location</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoCompleteProfile.location')}</label>
             <button
               type="button"
               onClick={detectLocation}
               disabled={locating}
               className="mt-1 w-full rounded-md border border-hairline bg-panel px-4 py-2 text-paper hover:border-signal"
             >
-              {locating ? 'Detecting...' : location ? 'Location detected ✓' : 'Use current location'}
+              {locating ? t('ngoCompleteProfile.detecting') : location ? t('ngoCompleteProfile.locationDetected') : t('ngoCompleteProfile.useCurrentLocation')}
             </button>
           </div>
 
@@ -158,7 +161,7 @@ export function NgoCompleteProfile() {
             disabled={submitting || !userId}
             className="rounded-md bg-signal px-4 py-3 font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
-            {submitting ? 'Submitting...' : 'Submit for review'}
+            {submitting ? t('ngoCompleteProfile.submitting') : t('ngoCompleteProfile.submitForReview')}
           </button>
         </form>
       </div>

@@ -3,6 +3,7 @@
 // SOS button still makes sense — pressing it while scrolled down the
 // page shouldn't yank you back to the top.
 
+import { useTranslation } from 'react-i18next';
 import type { QuickSosStatus } from '../hooks/useQuickSos';
 
 interface QuickSosModalProps {
@@ -13,6 +14,7 @@ interface QuickSosModalProps {
 }
 
 export function QuickSosModal({ status, trackingId, error, onClose }: QuickSosModalProps) {
+  const { t } = useTranslation();
   // Nothing to show while idle — this is what makes the modal
   // invisible until a button actually gets pressed.
   if (status === 'idle') return null;
@@ -23,51 +25,48 @@ export function QuickSosModal({ status, trackingId, error, onClose }: QuickSosMo
         {(status === 'locating' || status === 'sending') && (
           <>
             <p className="font-display text-lg font-semibold text-paper">
-              {status === 'locating' ? 'Getting your location...' : 'Sending your SOS...'}
+              {status === 'locating' ? t('quickSosModal.gettingLocation') : t('quickSosModal.sendingSos')}
             </p>
-            <p className="mt-1 text-sm text-muted">Keep this open for a moment.</p>
+            <p className="mt-1 text-sm text-muted">{t('quickSosModal.keepOpen')}</p>
           </>
         )}
 
         {status === 'done' && trackingId && (
           <>
-            <p className="font-display text-lg font-semibold text-paper">Help is on the way</p>
-            <p className="mt-1 text-sm text-muted">Your location has been sent to nearby responders.</p>
+            <p className="font-display text-lg font-semibold text-paper">{t('quickSosModal.helpOnWay')}</p>
+            <p className="mt-1 text-sm text-muted">{t('quickSosModal.locationSent')}</p>
             <p className="mt-3 font-data text-lg text-paper">{trackingId.slice(0, 8)}</p>
             <button
               onClick={onClose}
               className="mt-5 w-full rounded-md bg-signal px-4 py-2 font-semibold text-white hover:opacity-90"
             >
-              Close
+              {t('quickSosModal.close')}
             </button>
           </>
         )}
 
         {status === 'queued' && (
           <>
-            <p className="font-display text-lg font-semibold text-paper">Saved — no connection right now</p>
-            <p className="mt-1 text-sm text-muted">
-              Your location was saved on this device and will send automatically the moment you're back online.
-              You don't need to press SOS again.
-            </p>
+            <p className="font-display text-lg font-semibold text-paper">{t('quickSosModal.savedNoConnection')}</p>
+            <p className="mt-1 text-sm text-muted">{t('quickSosModal.savedNoConnectionBody')}</p>
             <button
               onClick={onClose}
               className="mt-5 w-full rounded-md bg-signal px-4 py-2 font-semibold text-white hover:opacity-90"
             >
-              Close
+              {t('quickSosModal.close')}
             </button>
           </>
         )}
 
         {status === 'error' && (
           <>
-            <p className="font-display text-lg font-semibold text-paper">Something went wrong</p>
+            <p className="font-display text-lg font-semibold text-paper">{t('quickSosModal.somethingWrong')}</p>
             <p className="mt-1 text-sm text-red-400">{error}</p>
             <button
               onClick={onClose}
               className="mt-5 w-full rounded-md border border-hairline px-4 py-2 font-semibold text-paper hover:border-signal"
             >
-              Close
+              {t('quickSosModal.close')}
             </button>
           </>
         )}

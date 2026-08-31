@@ -17,6 +17,7 @@ import { requestIcon, volunteerIcon, ngoIcon } from '../lib/mapIcons';
 import { distanceKm } from '../lib/distance';
 import { Header } from '../components/Header';
 import { UrgencyFilterBar, type UrgencyFilterKey } from '../components/UrgencyFilterBar';
+import { PhoneActions } from '../components/PhoneActions';
 import type { SosRequest, VolunteerProfile, Ngo, NgoAreaAssignment } from '../lib/types';
 
 const DEFAULT_CENTER: [number, number] = [22.2587, 71.1924];
@@ -152,6 +153,7 @@ export function AdminPanel() {
           id: v.id,
           type: 'volunteer' as const,
           name: v.full_name ?? 'Volunteer',
+          phone: v.phone,
           detail: v.skills.join(', ') || 'no skills listed',
           km: v.latitude && v.longitude ? distanceKm(selected.latitude, selected.longitude, v.latitude, v.longitude) : Infinity,
         })),
@@ -159,6 +161,7 @@ export function AdminPanel() {
           id: n.id,
           type: 'ngo' as const,
           name: n.org_name,
+          phone: n.contact_phone,
           detail: n.resources_available || 'no resources listed',
           km: n.latitude && n.longitude ? distanceKm(selected.latitude, selected.longitude, n.latitude, n.longitude) : Infinity,
         })),
@@ -227,7 +230,10 @@ export function AdminPanel() {
     <div className="flex h-screen w-screen flex-col overflow-x-hidden bg-ink">
       <Header />
       <UrgencyFilterBar active={activeUrgencies} onToggle={toggleUrgency} />
-      <div className="flex items-center justify-end border-b border-hairline bg-panel px-6 py-2">
+      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-hairline bg-panel px-4 py-2 sm:px-6">
+        <Link to="/admin/requests" className="text-sm text-signal hover:underline">
+          Requests list →
+        </Link>
         <Link to="/admin/ngos" className="text-sm text-signal hover:underline">
           NGO approvals →
         </Link>
@@ -313,7 +319,7 @@ export function AdminPanel() {
         </MapContainer>
 
         {selected && (
-          <div className="fixed right-0 top-0 z-[1000] h-full w-80 overflow-y-auto border-l border-hairline bg-panel p-5 shadow-lg">
+          <div className="fixed right-0 top-0 z-[1000] h-full w-[calc(100vw-2rem)] overflow-y-auto border-l border-hairline bg-panel p-5 shadow-lg sm:w-80">
             <button onClick={() => setSelected(null)} className="text-sm text-muted hover:text-paper">
               ✕ Close
             </button>
@@ -329,9 +335,8 @@ export function AdminPanel() {
                 </dd>
               </div>
               {selected.reporter_phone && (
-                <div>
-                  <dt className="inline text-muted">Phone: </dt>
-                  <dd className="inline font-data text-paper">{selected.reporter_phone}</dd>
+                <div className="mt-1">
+                  <PhoneActions phone={selected.reporter_phone} />
                 </div>
               )}
               {selected.landmark && (
@@ -361,22 +366,29 @@ export function AdminPanel() {
                 {nearbyResponders.length === 0 && <p className="mt-2 text-sm text-muted">None found nearby yet.</p>}
                 <ul className="mt-2 space-y-2">
                   {nearbyResponders.map((r) => (
-                    <li key={`${r.type}-${r.id}`} className="flex items-center justify-between rounded-md border border-hairline p-2">
-                      <div>
-                        <p className="text-sm font-medium text-paper">
-                          {r.name} <span className="text-xs text-muted">({r.type === 'ngo' ? 'NGO' : 'Volunteer'})</span>
-                        </p>
-                        <p className="font-data text-xs text-muted">
-                          {r.km.toFixed(1)} km away · {r.detail}
-                        </p>
+                    <li key={`${r.type}-${r.id}`} className="rounded-md border border-hairline p-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-paper">
+                            {r.name} <span className="text-xs text-muted">({r.type === 'ngo' ? 'NGO' : 'Volunteer'})</span>
+                          </p>
+                          <p className="font-data text-xs text-muted">
+                            {r.km.toFixed(1)} km away · {r.detail}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => assignResponder(r.id, r.type)}
+                          disabled={assigning}
+                          className="shrink-0 rounded-md bg-signal px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                        >
+                          Assign
+                        </button>
                       </div>
-                      <button
-                        onClick={() => assignResponder(r.id, r.type)}
-                        disabled={assigning}
-                        className="rounded-md bg-signal px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
-                      >
-                        Assign
-                      </button>
+                      {r.phone && (
+                        <div className="mt-1.5 text-xs">
+                          <PhoneActions phone={r.phone} />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>

@@ -61,6 +61,18 @@ body {
   font-family: var(--font-body);
 }
 
+/* This is the actual fix for the app rendering all-dark on a phone
+   with its system dark mode on: WITHOUT declaring color-scheme,
+   Android Chrome assumes a site has done nothing to handle dark
+   mode itself, and heuristically force-darkens the whole page —
+   inverting colors on its own. That's what silently overrode our
+   real, deliberately-built light theme. Declaring color-scheme
+   explicitly tells the browser "this site already handles its own
+   theming, don't touch it," which stops that auto-darkening dead. */
+:root {
+  color-scheme: light;
+}
+
 /* DARK MODE — overrides the same variable names for anything inside
    an element carrying data-theme="dark" (set on <html> — see
    useTheme.ts). Because every component uses the SAME utility
@@ -81,6 +93,12 @@ body {
      contrast against a dark background, and keeping brand/urgency
      colors identical across modes means "teal" and "critical red"
      mean the same thing regardless of which theme someone's using. */
+
+  /* When OUR dark mode is actually active, tell the browser that's
+     genuinely true too — so browser-native UI (form control colors,
+     scrollbar styling on some platforms) matches instead of clashing
+     with our own dark colors. */
+  color-scheme: dark;
 }
 
 h1, h2, h3 {

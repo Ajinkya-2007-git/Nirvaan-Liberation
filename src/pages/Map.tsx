@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase';
 import { requestIcon, volunteerIcon, ngoIcon } from '../lib/mapIcons';
 import { Header } from '../components/Header';
 import { UrgencyFilterBar, type UrgencyFilterKey } from '../components/UrgencyFilterBar';
+import { PhoneActions } from '../components/PhoneActions';
 import { timeAgo } from '../lib/timeAgo';
 import type { SosRequest, VolunteerProfile, Ngo, NgoAreaAssignment } from '../lib/types';
 
@@ -41,6 +42,12 @@ export function Map() {
   // Stays null for a logged-out visitor, which is fine: the "Your
   // assignments" panel simply never renders for them.
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // Starts collapsed on purpose — this panel used to always render
+  // full-size with no way to dismiss it, which on a phone screen
+  // meant it could take up most of the visible map with no way to
+  // see what's underneath. A small pill button is shown instead
+  // until someone taps it open.
+  const [assignmentsPanelOpen, setAssignmentsPanelOpen] = useState(false);
   // All five categories start visible — someone opens the filter
   // bar to HIDE noise they don't care about, not to discover pins
   // that were invisible by default.
@@ -244,8 +251,23 @@ export function Map() {
             direct answer to "volunteers/NGOs can't see what they're
             assigned to": it's always visible on the map they already
             land on after logging in. */}
-        {(myAssignments.length > 0 || myAreaAssignments.length > 0) && (
-          <div className="fixed left-4 top-20 z-[900] max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-hairline bg-panel p-4 shadow-lg">
+        {(myAssignments.length > 0 || myAreaAssignments.length > 0) && !assignmentsPanelOpen && (
+          <button
+            onClick={() => setAssignmentsPanelOpen(true)}
+            className="fixed left-4 top-20 z-[900] rounded-full border border-hairline bg-panel px-4 py-2 text-sm font-medium text-paper shadow-lg"
+          >
+            Your assignments ({myAssignments.length + myAreaAssignments.length}) ▾
+          </button>
+        )}
+
+        {(myAssignments.length > 0 || myAreaAssignments.length > 0) && assignmentsPanelOpen && (
+          <div className="fixed left-4 top-20 z-[900] max-h-[70vh] w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-hairline bg-panel p-4 shadow-lg sm:w-80">
+            <button
+              onClick={() => setAssignmentsPanelOpen(false)}
+              className="mb-2 text-sm text-muted hover:text-paper"
+            >
+              ▲ Hide
+            </button>
             {myAreaAssignments.length > 0 && (
               <div className="mb-4">
                 <h3 className="font-display text-sm font-semibold text-paper">Your assigned area</h3>
@@ -320,17 +342,8 @@ export function Map() {
                         </dd>
                       </div>
                       {r.reporter_phone && (
-                        <div>
-                          <dt className="inline text-muted">Phone: </dt>
-                          {/* A tel: link lets someone tap straight
-                              into a phone call on mobile — meaningfully
-                              faster than reading the number and
-                              dialing it manually. */}
-                          <dd className="inline">
-                            <a href={`tel:${r.reporter_phone}`} className="font-data text-signal hover:underline">
-                              {r.reporter_phone}
-                            </a>
-                          </dd>
+                        <div className="mt-1">
+                          <PhoneActions phone={r.reporter_phone} />
                         </div>
                       )}
                       {r.landmark && (
@@ -395,7 +408,7 @@ export function Map() {
             how any ancestor element's width gets computed — this is
             what actually fixes the panel rendering off-screen. */}
         {selected && (
-          <div className="fixed right-0 top-0 z-[1000] h-full w-80 overflow-y-auto border-l border-hairline bg-panel p-5 shadow-lg">
+          <div className="fixed right-0 top-0 z-[1000] h-full w-[calc(100vw-2rem)] overflow-y-auto border-l border-hairline bg-panel p-5 shadow-lg sm:w-80">
             <button onClick={() => setSelected(null)} className="text-sm text-muted hover:text-paper">
               ✕ Close
             </button>

@@ -48,16 +48,24 @@ export function Header() {
     // what makes it feel like a modern app shell rather than a
     // plain static banner.
     <header className="sticky top-0 z-40 border-b border-hairline bg-ink/85 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/" className="flex items-center gap-2.5">
+      {/* flex-wrap is a deliberate safety net: on a narrow phone
+          screen, if everything genuinely doesn't fit on one line,
+          items now wrap to a second line instead of the rightmost
+          one (Request Help) getting silently clipped past the edge
+          of the screen — which is what was actually happening
+          before. Reduced padding/gaps on small screens (the "sm:"
+          variants below) mean wrapping should rarely even be needed
+          in practice, but it's there as a guarantee either way. */}
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6 sm:py-4">
+        <Link to="/" className="flex items-center gap-2">
           {/* The actual logo mark — cropped from your shield emblem
               with a transparent background, so it sits directly on
               the dark header without any stray box around it. */}
-          <img src="/logo-mark.png" alt="" className="h-8 w-8" />
-          <span className="font-display text-lg font-bold tracking-tight text-paper">NIRVAAN</span>
+          <img src="/logo-mark.png" alt="" className="h-7 w-7 sm:h-8 sm:w-8" />
+          <span className="font-display text-base font-bold tracking-tight text-paper sm:text-lg">NIRVAAN</span>
         </Link>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-2 sm:gap-5">
           <LanguageSwitcher />
           {/* Toggles the data-theme attribute this whole re-theme
               relies on (see useTheme.ts + index.css). Icon flips to
@@ -67,23 +75,29 @@ export function Header() {
           <button
             onClick={toggleTheme}
             aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-            className="rounded-md border border-hairline p-1.5 text-muted transition hover:border-signal hover:text-paper"
+            className="shrink-0 rounded-md border border-hairline p-1.5 text-muted transition hover:border-signal hover:text-paper"
           >
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
-          <Link to="/map" className="text-sm text-muted transition hover:text-paper">
+          {/* Hidden below the "sm" breakpoint — this is the item
+              that's safe to drop on a narrow phone screen, since
+              /map is also reachable from the landing page itself.
+              Request Help and Sign out stay visible everywhere,
+              since those are the actions someone's actually likely
+              to need mid-emergency or mid-session. */}
+          <Link to="/map" className="hidden text-sm text-muted transition hover:text-paper sm:inline">
             {t('header.liveMap')}
           </Link>
           <Link
             to="/request-help"
-            className="rounded-md bg-signal-orange px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+            className="shrink-0 rounded-md bg-signal-orange px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
           >
             {t('header.requestHelp')}
           </Link>
           {session && (
             <button
               onClick={handleSignOut}
-              className="rounded-md border border-hairline px-3 py-1.5 text-sm text-muted transition hover:border-signal hover:text-paper"
+              className="shrink-0 rounded-md border border-hairline px-2.5 py-1.5 text-xs text-muted transition hover:border-signal hover:text-paper sm:px-3 sm:text-sm"
             >
               {t('header.signOut')}
             </button>

@@ -61,6 +61,10 @@ export interface Ngo {
   registration_number?: string;
   area_of_operation?: string;
   resources_available?: string;
+  // Was always in schema.sql's own comments, but never actually
+  // wired up until an admin needed to call/copy an NGO's number —
+  // see add-ngo-phone.sql.
+  contact_phone?: string;
   latitude?: number;
   longitude?: number;
   status: NgoStatus;

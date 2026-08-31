@@ -11,12 +11,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 import { LocationPicker } from '../components/LocationPicker';
+import { PhoneActions } from '../components/PhoneActions';
 import type { Category, Urgency } from '../lib/types';
 
 interface PendingNgo {
   id: string;
   org_name: string;
   registration_number: string | null;
+  contact_phone: string | null;
   area_of_operation: string;
   resources_available: string;
 }
@@ -88,7 +90,7 @@ export function AdminNgoApprovals() {
     async function loadNgos() {
       const { data: pendingData } = await supabase
         .from('ngos')
-        .select('id, org_name, registration_number, area_of_operation, resources_available')
+        .select('id, org_name, registration_number, contact_phone, area_of_operation, resources_available')
         .eq('status', 'pending_approval');
       if (pendingData) setPending(pendingData);
 
@@ -196,6 +198,11 @@ export function AdminNgoApprovals() {
                 <p className="font-display text-lg font-semibold text-paper">{ngo.org_name}</p>
                 {ngo.registration_number && (
                   <p className="mt-1 font-data text-xs text-muted">Reg. no. {ngo.registration_number}</p>
+                )}
+                {ngo.contact_phone && (
+                  <div className="mt-2 text-xs">
+                    <PhoneActions phone={ngo.contact_phone} label="Contact" />
+                  </div>
                 )}
                 <p className="mt-3 text-sm text-muted">
                   <span className="text-paper">Area of operation: </span>

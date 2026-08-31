@@ -6,6 +6,7 @@
 
 import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 
@@ -13,6 +14,7 @@ const SKILL_OPTIONS = ['medical', 'general', 'boat', 'rescue'] as const;
 type Skill = (typeof SKILL_OPTIONS)[number];
 
 export function CompleteVolunteerProfile() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // We need to know WHO is logged in before we can submit anything —
@@ -116,8 +118,8 @@ export function CompleteVolunteerProfile() {
     <div className="min-h-screen bg-ink">
       <Header />
       <div className="mx-auto max-w-lg px-6 py-10">
-      <h1 className="font-display text-2xl font-semibold text-paper">Complete your volunteer profile</h1>
-      <p className="mt-1 text-sm text-muted">Step 2 of 2 — this is what shows on the live map.</p>
+      <h1 className="font-display text-2xl font-semibold text-paper">{t('completeVolunteerProfile.title')}</h1>
+      <p className="mt-1 text-sm text-muted">{t('completeVolunteerProfile.step2')}</p>
 
       <div className="mt-4 flex gap-2">
         <button
@@ -127,7 +129,7 @@ export function CompleteVolunteerProfile() {
             signupType === 'individual' ? 'border-signal bg-signal/10 text-signal' : 'border-hairline text-muted'
           }`}
         >
-          Individual
+          {t('completeVolunteerProfile.individual')}
         </button>
         <button
           type="button"
@@ -136,14 +138,14 @@ export function CompleteVolunteerProfile() {
             signupType === 'group' ? 'border-signal bg-signal/10 text-signal' : 'border-hairline text-muted'
           }`}
         >
-          Group / team
+          {t('completeVolunteerProfile.group')}
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
         {signupType === 'group' && (
           <div>
-            <label className="block text-sm font-medium text-paper">Estimated member count</label>
+            <label className="block text-sm font-medium text-paper">{t('completeVolunteerProfile.estimatedMemberCount')}</label>
             <input
               type="number"
               min={1}
@@ -156,26 +158,26 @@ export function CompleteVolunteerProfile() {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-paper">Skills available</label>
+          <label className="block text-sm font-medium text-paper">{t('completeVolunteerProfile.skillsAvailable')}</label>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {SKILL_OPTIONS.map((skill) => (
               <label key={skill} className="flex items-center gap-2 text-sm capitalize text-paper">
                 <input type="checkbox" checked={skills.has(skill)} onChange={() => toggleSkill(skill)} />
-                {skill}
+                {t(`completeVolunteerProfile.${skill}`)}
               </label>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-paper">Location</label>
+          <label className="block text-sm font-medium text-paper">{t('completeVolunteerProfile.location')}</label>
           <button
             type="button"
             onClick={detectLocation}
             disabled={locating}
             className="mt-1 w-full rounded-md border border-hairline bg-panel px-4 py-2 text-paper hover:border-signal"
           >
-            {locating ? 'Detecting...' : location ? 'Location detected ✓' : 'Use my current location'}
+            {locating ? t('completeVolunteerProfile.detecting') : location ? t('completeVolunteerProfile.locationDetected') : t('completeVolunteerProfile.useCurrentLocation')}
           </button>
         </div>
 
@@ -186,7 +188,7 @@ export function CompleteVolunteerProfile() {
           disabled={submitting || !userId}
           className="rounded-md bg-signal px-4 py-3 font-semibold text-white hover:opacity-90 disabled:opacity-60"
         >
-          {submitting ? 'Saving...' : 'Finish setup'}
+          {submitting ? t('completeVolunteerProfile.saving') : t('completeVolunteerProfile.finishSetup')}
         </button>
       </form>
       </div>

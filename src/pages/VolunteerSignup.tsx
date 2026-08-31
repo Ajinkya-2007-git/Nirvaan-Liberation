@@ -22,10 +22,12 @@
 
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 
 export function VolunteerSignup() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -117,9 +119,9 @@ export function VolunteerSignup() {
       <div className="min-h-screen bg-ink">
         <Header />
         <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-          <h1 className="font-display text-2xl font-semibold text-paper">Enter your code</h1>
+          <h1 className="font-display text-2xl font-semibold text-paper">{t('volunteerSignup.enterCode')}</h1>
           <p className="text-muted">
-            We sent a code to <strong className="text-paper">{email}</strong>. Type it in below to confirm your account.
+            {t('volunteerSignup.codeSentTo')} <strong className="text-paper">{email}</strong>. {t('volunteerSignup.codeInstructions')}
           </p>
 
           <form onSubmit={handleVerifyCode} className="mt-4 flex w-full flex-col gap-3">
@@ -132,7 +134,7 @@ export function VolunteerSignup() {
               // enough to fit any length it sends, not an exact match.
               maxLength={10}
               required
-              placeholder="Enter the code from your email"
+              placeholder={t('volunteerSignup.enterCode') ?? undefined}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className="w-full rounded-md border border-hairline bg-panel px-3 py-3 text-center text-2xl tracking-widest text-paper"
@@ -145,7 +147,7 @@ export function VolunteerSignup() {
               disabled={verifying}
               className="rounded-md bg-signal px-4 py-3 font-semibold text-white hover:opacity-90 disabled:opacity-60"
             >
-              {verifying ? 'Verifying...' : 'Verify and continue'}
+              {verifying ? t('volunteerSignup.verifying') : t('volunteerSignup.verifyAndContinue')}
             </button>
           </form>
         </div>
@@ -157,12 +159,12 @@ export function VolunteerSignup() {
     <div className="min-h-screen bg-ink">
       <Header />
       <div className="mx-auto max-w-lg px-6 py-10">
-        <h1 className="font-display text-2xl font-semibold text-paper">Volunteer sign up</h1>
-        <p className="mt-1 text-sm text-muted">Step 1 of 2 — create your account. You'll add your skills and location right after.</p>
+        <h1 className="font-display text-2xl font-semibold text-paper">{t('volunteerSignup.title')}</h1>
+        <p className="mt-1 text-sm text-muted">{t('volunteerSignup.step1')}</p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
           <div>
-            <label className="block text-sm font-medium text-paper">Your name</label>
+            <label className="block text-sm font-medium text-paper">{t('volunteerSignup.yourName')}</label>
             <input
               type="text"
               required
@@ -173,7 +175,7 @@ export function VolunteerSignup() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Contact phone</label>
+            <label className="block text-sm font-medium text-paper">{t('volunteerSignup.contactPhone')}</label>
             <input
               type="tel"
               required
@@ -184,7 +186,7 @@ export function VolunteerSignup() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Email</label>
+            <label className="block text-sm font-medium text-paper">{t('volunteerSignup.email')}</label>
             <input
               type="email"
               required
@@ -195,7 +197,7 @@ export function VolunteerSignup() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Password</label>
+            <label className="block text-sm font-medium text-paper">{t('volunteerSignup.password')}</label>
             <input
               type="password"
               required
@@ -213,13 +215,13 @@ export function VolunteerSignup() {
             disabled={submitting}
             className="rounded-md bg-signal px-4 py-3 font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
-            {submitting ? 'Creating account...' : 'Continue'}
+            {submitting ? t('volunteerSignup.creatingAccount') : t('volunteerSignup.continueBtn')}
           </button>
 
           <p className="text-center text-sm text-muted">
-            Already have an account?{' '}
+            {t('volunteerSignup.alreadyHaveAccount')}{' '}
             <Link to="/volunteer/login" className="text-signal hover:underline">
-              Log in
+              {t('volunteerSignup.logIn')}
             </Link>
           </p>
         </form>

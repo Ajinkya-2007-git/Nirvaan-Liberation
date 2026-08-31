@@ -8,10 +8,12 @@
 
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 
 export function NgoSignup() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [orgName, setOrgName] = useState('');
   const [phone, setPhone] = useState('');
@@ -83,9 +85,9 @@ export function NgoSignup() {
       <div className="min-h-screen bg-ink">
         <Header />
         <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-          <h1 className="font-display text-2xl font-semibold text-paper">Enter your code</h1>
+          <h1 className="font-display text-2xl font-semibold text-paper">{t('ngoSignup.enterCode')}</h1>
           <p className="text-muted">
-            We sent a code to <strong className="text-paper">{email}</strong>. Type it in below to confirm your account.
+            {t('ngoSignup.codeSentTo')} <strong className="text-paper">{email}</strong>. {t('ngoSignup.codeInstructions')}
           </p>
 
           <form onSubmit={handleVerifyCode} className="mt-4 flex w-full flex-col gap-3">
@@ -94,7 +96,7 @@ export function NgoSignup() {
               inputMode="numeric"
               maxLength={10}
               required
-              placeholder="Enter the code from your email"
+              placeholder={t('ngoSignup.enterCode') ?? undefined}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className="w-full rounded-md border border-hairline bg-panel px-3 py-3 text-center text-2xl tracking-widest text-paper"
@@ -107,7 +109,7 @@ export function NgoSignup() {
               disabled={verifying}
               className="rounded-md bg-signal px-4 py-3 font-semibold text-white hover:opacity-90 disabled:opacity-60"
             >
-              {verifying ? 'Verifying...' : 'Verify and continue'}
+              {verifying ? t('ngoSignup.verifying') : t('ngoSignup.verifyAndContinue')}
             </button>
           </form>
         </div>
@@ -119,14 +121,14 @@ export function NgoSignup() {
     <div className="min-h-screen bg-ink">
       <Header />
       <div className="mx-auto max-w-lg px-6 py-10">
-        <h1 className="font-display text-2xl font-semibold text-paper">NGO / organization sign up</h1>
+        <h1 className="font-display text-2xl font-semibold text-paper">{t('ngoSignup.title')}</h1>
         <p className="mt-1 text-sm text-muted">
-          Step 1 of 2 — create your account. Your organization's details and approval come right after.
+          {t('ngoSignup.step1')}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
           <div>
-            <label className="block text-sm font-medium text-paper">Organization name</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoSignup.orgName')}</label>
             <input
               type="text"
               required
@@ -137,7 +139,7 @@ export function NgoSignup() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Contact phone</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoSignup.contactPhone')}</label>
             <input
               type="tel"
               required
@@ -148,7 +150,7 @@ export function NgoSignup() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Email</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoSignup.email')}</label>
             <input
               type="email"
               required
@@ -159,7 +161,7 @@ export function NgoSignup() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-paper">Password</label>
+            <label className="block text-sm font-medium text-paper">{t('ngoSignup.password')}</label>
             <input
               type="password"
               required
@@ -177,13 +179,13 @@ export function NgoSignup() {
             disabled={submitting}
             className="rounded-md bg-signal px-4 py-3 font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
-            {submitting ? 'Creating account...' : 'Continue'}
+            {submitting ? t('ngoSignup.creatingAccount') : t('ngoSignup.continueBtn')}
           </button>
 
           <p className="text-center text-sm text-muted">
-            Already have an account?{' '}
+            {t('ngoSignup.alreadyHaveAccount')}{' '}
             <Link to="/volunteer/login" className="text-signal hover:underline">
-              Log in
+              {t('ngoSignup.logIn')}
             </Link>
           </p>
         </form>

@@ -5,10 +5,12 @@
 
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 
 export function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -125,14 +127,14 @@ export function Login() {
     <div className="min-h-screen bg-ink">
       <Header />
       <div className="mx-auto max-w-md px-6 py-10">
-        <h1 className="font-display text-2xl font-semibold text-paper">Log in</h1>
+        <h1 className="font-display text-2xl font-semibold text-paper">{t('login.logIn')}</h1>
 
         {statusMessage ? (
           <p className="mt-6 rounded-md border border-hairline bg-panel p-4 text-sm text-paper">{statusMessage}</p>
         ) : (
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
             <div>
-              <label className="block text-sm font-medium text-paper">Email</label>
+              <label className="block text-sm font-medium text-paper">{t('login.email')}</label>
               <input
                 type="email"
                 required
@@ -143,7 +145,7 @@ export function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-paper">Password</label>
+              <label className="block text-sm font-medium text-paper">{t('login.password')}</label>
               <input
                 type="password"
                 required
@@ -160,17 +162,17 @@ export function Login() {
               disabled={submitting}
               className="rounded-md bg-signal px-4 py-3 font-semibold text-white hover:opacity-90 disabled:opacity-60"
             >
-              {submitting ? 'Logging in...' : 'Log in'}
+              {submitting ? t('login.loggingIn') : t('login.logIn')}
             </button>
 
             <p className="text-center text-sm text-muted">
-              No account yet?{' '}
+              {t('login.noAccountYet')}{' '}
               <Link to="/volunteer/signup" className="text-signal hover:underline">
-                Volunteer sign up
+                {t('login.volunteerSignUp')}
               </Link>{' '}
               ·{' '}
               <Link to="/ngo/signup" className="text-signal hover:underline">
-                NGO sign up
+                {t('login.ngoSignUp')}
               </Link>
             </p>
           </form>
