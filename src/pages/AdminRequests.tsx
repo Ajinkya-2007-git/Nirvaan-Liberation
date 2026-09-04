@@ -12,11 +12,27 @@ import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 import { PhoneActions } from '../components/PhoneActions';
 import { distanceKm } from '../lib/distance';
-import type { SosRequest, VolunteerProfile, Ngo, Urgency } from '../lib/types';
+import type { SosRequest, VolunteerProfile, Ngo, Urgency, Category } from '../lib/types';
 
 // Used to sort worst-first — a plain array index lookup is a simple,
 // readable way to turn a severity WORD into a sortable NUMBER.
 const URGENCY_ORDER: Urgency[] = ['critical', 'high', 'medium', 'low'];
+
+const CATEGORY_OPTIONS: { value: Category | ''; label: string }[] = [
+  { value: '', label: 'All categories' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'food', label: 'Food' },
+  { value: 'shelter', label: 'Shelter' },
+  { value: 'rescue', label: 'Rescue' },
+];
+
+const URGENCY_OPTIONS: { value: Urgency | ''; label: string }[] = [
+  { value: '', label: 'All urgencies' },
+  { value: 'critical', label: 'Critical' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
 
 const URGENCY_BADGE: Record<string, { label: string; color: string }> = {
   critical: { label: 'Critical', color: '#dc2626' },
@@ -34,6 +50,8 @@ export function AdminRequests() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [error, setError] = useState('');
+  const [filterCategory, setFilterCategory] = useState<Category | ''>('');
+  const [filterUrgency, setFilterUrgency] = useState<Urgency | ''>('');
 
   useEffect(() => {
     async function checkAdmin() {
@@ -99,6 +117,15 @@ export function AdminRequests() {
     if (aRank !== bRank) return aRank - bRank;
 
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  // Applied AFTER sorting, not before — this way the sort order
+  // (worst-first) stays consistent regardless of which filters are
+  // active, instead of the two interacting in a confusing way.
+  const filteredRequests = sortedRequests.filter((r) => {
+    if (filterCategory && r.category !== filterCategory) return false;
+    if (filterUrgency && r.urgency !== filterUrgency) return false;
+    return true;
   });
 
   function nearbyResponders(request: SosRequest) {
@@ -183,11 +210,53 @@ export function AdminRequests() {
 
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
-        {sortedRequests.length === 0 ? (
-          <p className="mt-8 text-muted">No requests yet.</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <div>
+            <label className="block text-xs text-muted">Category</label>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value as Category | '')}
+              className="mt-1 rounded-md border border-hairline bg-panel px-3 py-1.5 text-sm text-paper"
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-muted">Urgency</label>
+            <select
+              value={filterUrgency}
+              onChange={(e) => setFilterUrgency(e.target.value as Urgency | '')}
+              className="mt-1 rounded-md border border-hairline bg-panel px-3 py-1.5 text-sm text-paper"
+            >
+              {URGENCY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {(filterCategory || filterUrgency) && (
+            <button
+              onClick={() => {
+                setFilterCategory('');
+                setFilterUrgency('');
+              }}
+              className="mt-5 text-xs text-muted hover:text-paper"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        {filteredRequests.length === 0 ? (
+          <p className="mt-8 text-muted">{requests.length === 0 ? 'No requests yet.' : 'No requests match these filters.'}</p>
         ) : (
           <ul className="mt-6 flex flex-col gap-4">
-            {sortedRequests.map((r) => {
+            {filteredRequests.map((r) => {
               const badge = r.urgency ? URGENCY_BADGE[r.urgency] : null;
               const isExpanded = expandedId === r.id;
 
