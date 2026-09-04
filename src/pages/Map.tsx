@@ -254,14 +254,25 @@ export function Map() {
         {(myAssignments.length > 0 || myAreaAssignments.length > 0) && !assignmentsPanelOpen && (
           <button
             onClick={() => setAssignmentsPanelOpen(true)}
-            className="fixed left-4 top-20 z-[900] rounded-full border border-hairline bg-panel px-4 py-2 text-sm font-medium text-paper shadow-lg"
+            className="fixed bottom-4 left-4 z-[900] rounded-full border border-hairline bg-panel px-4 py-2 text-sm font-medium text-paper shadow-lg sm:bottom-auto sm:top-20"
           >
             Your assignments ({myAssignments.length + myAreaAssignments.length}) ▾
           </button>
         )}
 
         {(myAssignments.length > 0 || myAreaAssignments.length > 0) && assignmentsPanelOpen && (
-          <div className="fixed left-4 top-20 z-[900] max-h-[70vh] w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-hairline bg-panel p-4 shadow-lg sm:w-80">
+          <div className="fixed bottom-4 left-4 z-[900] max-h-[70vh] w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-hairline bg-panel p-4 shadow-lg sm:bottom-auto sm:top-20 sm:w-80">
+            {/* Anchored to the BOTTOM of the screen on mobile (and
+                back to the original top-20 position on larger
+                screens via the sm: classes above) — this is a
+                structural fix, not another pixel-guess. The old
+                "top-20" assumed the header is always exactly one
+                line tall, which breaks the moment the header wraps
+                to two lines on a narrow phone (too many nav items to
+                fit). Bottom-anchoring sidesteps the whole problem:
+                it doesn't matter how tall the header ends up being,
+                because this panel no longer depends on that number
+                at all. */}
             <button
               onClick={() => setAssignmentsPanelOpen(false)}
               className="mb-2 text-sm text-muted hover:text-paper"
@@ -408,7 +419,15 @@ export function Map() {
             how any ancestor element's width gets computed — this is
             what actually fixes the panel rendering off-screen. */}
         {selected && (
-          <div className="fixed right-0 top-0 z-[1000] h-full w-[calc(100vw-2rem)] overflow-y-auto border-l border-hairline bg-panel p-5 shadow-lg sm:w-80">
+          <div className="fixed inset-x-0 bottom-0 z-[1000] max-h-[80vh] overflow-y-auto rounded-t-xl border-t border-hairline bg-panel p-5 shadow-lg sm:inset-x-auto sm:right-0 sm:top-0 sm:h-full sm:max-h-full sm:w-80 sm:rounded-none sm:border-l sm:border-t-0">
+            {/* Same structural fix as the assignments panel: on
+                mobile this now slides up from the BOTTOM instead of
+                pinning to top-0, so it can never cover the header's
+                nav controls (sign out, language, theme) regardless
+                of how tall the header ends up being. On larger
+                screens (sm:) it reverts to the original full-height
+                right-side sidebar, which was never actually broken
+                there. */}
             <button onClick={() => setSelected(null)} className="text-sm text-muted hover:text-paper">
               ✕ Close
             </button>
