@@ -2,7 +2,7 @@
 
 An AI-powered disaster response coordination platform that connects people in need with nearby volunteers, NGOs, and rescue teams — in real time, and even when there's no internet connection.
 
-**Live app:** [PASTE YOUR VERCEL URL HERE]
+**Live app:** https://nirvaan-liberation.vercel.app/
 
 ---
 
