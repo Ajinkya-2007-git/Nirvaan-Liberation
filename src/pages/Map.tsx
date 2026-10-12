@@ -16,6 +16,7 @@ import { requestIcon, volunteerIcon, ngoIcon } from '../lib/mapIcons';
 import { Header } from '../components/Header';
 import { UrgencyFilterBar, type UrgencyFilterKey } from '../components/UrgencyFilterBar';
 import { PhoneActions } from '../components/PhoneActions';
+import { RequestChat } from '../components/RequestChat';
 import { timeAgo } from '../lib/timeAgo';
 import type { SosRequest, VolunteerProfile, Ngo, NgoAreaAssignment } from '../lib/types';
 
@@ -84,6 +85,12 @@ export function Map() {
     });
   }
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  // Which ONE assignment's chat is expanded (showing all threads at once would make the panel huge).
+  const [chatOpenFor, setChatOpenFor] = useState<string | null>(null);
+  // State for an NGO reporting that it only partly covered its area.
+  const [reportingAreaId, setReportingAreaId] = useState<string | null>(null);
+  const [reportNotes, setReportNotes] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
@@ -141,6 +148,16 @@ export function Map() {
     setUpdatingStatus(requestId);
     await supabase.from('sos_requests').update({ status, updated_at: new Date().toISOString() }).eq('id', requestId);
     setUpdatingStatus(null);
+  }
+
+  // Marks an area assignment 'partially_fulfilled' with the NGO's own note about what is
+  // still needed. The database trigger guard_area_assignment_update stops this call from
+  // changing anything else (radius, area, or marking it 'reassigned' itself).
+  async function reportPartialFulfillment(areaId: string) {
+    setSubmittingReport(true);
+    await supabase.from('ngo_area_assignments').update({ status: 'partially_fulfilled', notes: reportNotes }).eq('id', areaId);
+    setSubmittingReport(false);
+    setReportingAreaId(null);
   }
 
   // The actual filtering — a request with no urgency yet (still
@@ -222,27 +239,40 @@ export function Map() {
               the `ngos` array turns the raw ngo_id into an actual
               name for the popup, since the assignment row itself
               only stores the id. */}
-          {areaAssignments.map((area) => {
-            const ngo = ngos.find((n) => n.id === area.ngo_id);
-            return (
-              <Circle
-                key={area.id}
-                center={[area.center_lat, area.center_lng]}
-                radius={area.radius_km * 1000} // Leaflet expects meters, we store km
-                pathOptions={{ color: '#2fb0ac', fillColor: '#2fb0ac', fillOpacity: 0.08, weight: 1.5, dashArray: '6 4' }}
-              >
-                <Popup>
-                  <strong>{area.area_name || ngo?.org_name || 'NGO area'}</strong>
-                  <br />
-                  {ngo?.org_name ?? 'NGO'}
-                  <br />
-                  {area.radius_km} km radius
-                  {area.category ? ` · ${area.category}` : ''}
-                  {area.urgency ? ` · ${area.urgency}` : ''}
-                </Popup>
-              </Circle>
-            );
-          })}
+          {/* 'reassigned' areas are hidden: once an area is handed to a replacement, only the
+              NEW circle should represent it. 'partially_fulfilled' ones are drawn in orange
+              (same "needs attention" colour used for high urgency) so they stand out. */}
+          {areaAssignments
+            .filter((area) => area.status !== 'reassigned')
+            .map((area) => {
+              const ngo = ngos.find((n) => n.id === area.ngo_id);
+              const isPartial = area.status === 'partially_fulfilled';
+              const color = isPartial ? '#ea580c' : '#2fb0ac';
+              return (
+                <Circle
+                  key={area.id}
+                  center={[area.center_lat, area.center_lng]}
+                  radius={area.radius_km * 1000} // Leaflet expects meters, we store km
+                  pathOptions={{ color, fillColor: color, fillOpacity: 0.08, weight: 1.5, dashArray: '6 4' }}
+                >
+                  <Popup>
+                    <strong>{area.area_name || ngo?.org_name || 'NGO area'}</strong>
+                    <br />
+                    {ngo?.org_name ?? 'NGO'}
+                    <br />
+                    {area.radius_km} km radius
+                    {area.category ? ` · ${area.category}` : ''}
+                    {area.urgency ? ` · ${area.urgency}` : ''}
+                    {isPartial && (
+                      <>
+                        <br />
+                        <strong>Partially fulfilled</strong> — needs additional support
+                      </>
+                    )}
+                  </Popup>
+                </Circle>
+              );
+            })}
         </MapContainer>
 
         {/* "Your assignments" — only appears at all if this logged-in
@@ -254,14 +284,25 @@ export function Map() {
         {(myAssignments.length > 0 || myAreaAssignments.length > 0) && !assignmentsPanelOpen && (
           <button
             onClick={() => setAssignmentsPanelOpen(true)}
-            className="fixed left-4 top-20 z-[900] rounded-full border border-hairline bg-panel px-4 py-2 text-sm font-medium text-paper shadow-lg"
+            className="fixed bottom-4 left-4 z-[900] rounded-full border border-hairline bg-panel px-4 py-2 text-sm font-medium text-paper shadow-lg sm:bottom-auto sm:top-20"
           >
             Your assignments ({myAssignments.length + myAreaAssignments.length}) ▾
           </button>
         )}
 
         {(myAssignments.length > 0 || myAreaAssignments.length > 0) && assignmentsPanelOpen && (
-          <div className="fixed left-4 top-20 z-[900] max-h-[70vh] w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-hairline bg-panel p-4 shadow-lg sm:w-80">
+          <div className="fixed bottom-4 left-4 z-[900] max-h-[70vh] w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-hairline bg-panel p-4 shadow-lg sm:bottom-auto sm:top-20 sm:w-80">
+            {/* Anchored to the BOTTOM of the screen on mobile (and
+                back to the original top-20 position on larger
+                screens via the sm: classes above) — this is a
+                structural fix, not another pixel-guess. The old
+                "top-20" assumed the header is always exactly one
+                line tall, which breaks the moment the header wraps
+                to two lines on a narrow phone (too many nav items to
+                fit). Bottom-anchoring sidesteps the whole problem:
+                it doesn't matter how tall the header ends up being,
+                because this panel no longer depends on that number
+                at all. */}
             <button
               onClick={() => setAssignmentsPanelOpen(false)}
               className="mb-2 text-sm text-muted hover:text-paper"
@@ -293,6 +334,55 @@ export function Map() {
                         Get directions to center →
                       </a>
                       <p className="mt-2 font-data text-xs text-muted">Assigned {timeAgo(area.created_at)}</p>
+
+                      {/* NGO can report it only partly covered this area; the admin then decides. */}
+                      {area.status === 'active' && (
+                        <div className="mt-2">
+                          {reportingAreaId === area.id ? (
+                            <div className="flex flex-col gap-2">
+                              <textarea
+                                rows={2}
+                                placeholder="What's still needed in this area?"
+                                value={reportNotes}
+                                onChange={(e) => setReportNotes(e.target.value)}
+                                className="rounded-md border border-hairline bg-ink px-2 py-1.5 text-xs text-paper"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => reportPartialFulfillment(area.id)}
+                                  disabled={submittingReport}
+                                  className="rounded-md bg-signal-orange px-2 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                                >
+                                  {submittingReport ? 'Submitting...' : 'Submit report'}
+                                </button>
+                                <button
+                                  onClick={() => setReportingAreaId(null)}
+                                  className="rounded-md border border-hairline px-2 py-1 text-xs text-muted hover:text-paper"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setReportingAreaId(area.id);
+                                setReportNotes('');
+                              }}
+                              className="text-xs font-medium text-signal-orange hover:underline"
+                            >
+                              Report partial fulfillment
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {area.status === 'partially_fulfilled' && (
+                        <div className="mt-2 rounded-md border border-signal-orange/40 bg-signal-orange/10 p-2">
+                          <p className="text-xs font-semibold text-signal-orange">Reported: needs additional support</p>
+                          {area.notes && <p className="mt-1 text-xs text-muted">"{area.notes}"</p>}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -392,6 +482,23 @@ export function Map() {
                       )}
                       {r.status === 'resolved' && <span className="text-xs text-muted">Resolved ✓</span>}
                     </div>
+
+                    {/* Chat only makes sense once the request is actually assigned. */}
+                    {r.status !== 'pending' && (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => setChatOpenFor(chatOpenFor === r.id ? null : r.id)}
+                          className="text-xs font-medium text-signal hover:underline"
+                        >
+                          {chatOpenFor === r.id ? 'Hide chat' : '💬 Message reporter'}
+                        </button>
+                        {chatOpenFor === r.id && currentUserId && (
+                          <div className="mt-2">
+                            <RequestChat requestId={r.id} senderType="responder" senderId={currentUserId} />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -408,7 +515,15 @@ export function Map() {
             how any ancestor element's width gets computed — this is
             what actually fixes the panel rendering off-screen. */}
         {selected && (
-          <div className="fixed right-0 top-0 z-[1000] h-full w-[calc(100vw-2rem)] overflow-y-auto border-l border-hairline bg-panel p-5 shadow-lg sm:w-80">
+          <div className="fixed inset-x-0 bottom-0 z-[1000] max-h-[80vh] overflow-y-auto rounded-t-xl border-t border-hairline bg-panel p-5 shadow-lg sm:inset-x-auto sm:right-0 sm:top-0 sm:h-full sm:max-h-full sm:w-80 sm:rounded-none sm:border-l sm:border-t-0">
+            {/* Same structural fix as the assignments panel: on
+                mobile this now slides up from the BOTTOM instead of
+                pinning to top-0, so it can never cover the header's
+                nav controls (sign out, language, theme) regardless
+                of how tall the header ends up being. On larger
+                screens (sm:) it reverts to the original full-height
+                right-side sidebar, which was never actually broken
+                there. */}
             <button onClick={() => setSelected(null)} className="text-sm text-muted hover:text-paper">
               ✕ Close
             </button>

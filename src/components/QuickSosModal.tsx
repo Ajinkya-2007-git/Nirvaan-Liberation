@@ -4,6 +4,7 @@
 // page shouldn't yank you back to the top.
 
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import type { QuickSosStatus } from '../hooks/useQuickSos';
 
 interface QuickSosModalProps {
@@ -36,9 +37,15 @@ export function QuickSosModal({ status, trackingId, error, onClose }: QuickSosMo
             <p className="font-display text-lg font-semibold text-paper">{t('quickSosModal.helpOnWay')}</p>
             <p className="mt-1 text-sm text-muted">{t('quickSosModal.locationSent')}</p>
             <p className="mt-3 font-data text-lg text-paper">{trackingId.slice(0, 8)}</p>
+            <Link
+              to={`/track/${trackingId}`}
+              className="mt-4 block rounded-md bg-signal px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Track & message your responder
+            </Link>
             <button
               onClick={onClose}
-              className="mt-5 w-full rounded-md bg-signal px-4 py-2 font-semibold text-white hover:opacity-90"
+              className="mt-2 w-full rounded-md border border-hairline px-4 py-2 text-sm text-muted hover:border-signal hover:text-paper"
             >
               {t('quickSosModal.close')}
             </button>

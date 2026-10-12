@@ -165,6 +165,12 @@ export function Login() {
               {submitting ? t('login.loggingIn') : t('login.logIn')}
             </button>
 
+            <p className="text-center text-sm">
+              <Link to="/volunteer/forgot-password" className="text-signal hover:underline">
+                Forgot password?
+              </Link>
+            </p>
+
             <p className="text-center text-sm text-muted">
               {t('login.noAccountYet')}{' '}
               <Link to="/volunteer/signup" className="text-signal hover:underline">

@@ -73,6 +73,16 @@ export interface Ngo {
 
 // The shape of one row in ngo_area_assignments — an admin-created
 // "this NGO covers this radius, focused on this category" record.
+// One message in a request's chat thread.
+export interface RequestMessage {
+  id: string;
+  sos_request_id: string;
+  sender_type: 'reporter' | 'responder';
+  sender_id?: string;
+  message: string;
+  created_at: string;
+}
+
 export interface NgoAreaAssignment {
   id: string;
   ngo_id: string;
@@ -82,6 +92,11 @@ export interface NgoAreaAssignment {
   area_name?: string;
   category?: Category;
   urgency?: Urgency;
+  // active = normal; partially_fulfilled = NGO reported it can't cover it all;
+  // reassigned = an admin replaced it with a new assignment (hidden from the map).
+  status: 'active' | 'partially_fulfilled' | 'reassigned';
+  notes?: string;
+  superseded_by?: string;
   created_at: string;
 }
 

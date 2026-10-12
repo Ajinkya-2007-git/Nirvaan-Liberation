@@ -295,31 +295,42 @@ export function AdminPanel() {
               they are, but seeing them drawn out spatially still
               helps when deciding whether a NEW area assignment would
               overlap with one that already exists. */}
-          {areaAssignments.map((area) => {
-            const ngo = ngos.find((n) => n.id === area.ngo_id);
-            return (
-              <Circle
-                key={area.id}
-                center={[area.center_lat, area.center_lng]}
-                radius={area.radius_km * 1000}
-                pathOptions={{ color: '#2fb0ac', fillColor: '#2fb0ac', fillOpacity: 0.08, weight: 1.5, dashArray: '6 4' }}
-              >
-                <Popup>
-                  <strong>{area.area_name || ngo?.org_name || 'NGO area'}</strong>
-                  <br />
-                  {ngo?.org_name ?? 'NGO'}
-                  <br />
-                  {area.radius_km} km radius
-                  {area.category ? ` · ${area.category}` : ''}
-                  {area.urgency ? ` · ${area.urgency}` : ''}
-                </Popup>
-              </Circle>
-            );
-          })}
+          {/* Same rules as the public map: hide 'reassigned', show 'partially_fulfilled' in orange. */}
+          {areaAssignments
+            .filter((area) => area.status !== 'reassigned')
+            .map((area) => {
+              const ngo = ngos.find((n) => n.id === area.ngo_id);
+              const isPartial = area.status === 'partially_fulfilled';
+              const color = isPartial ? '#ea580c' : '#2fb0ac';
+              return (
+                <Circle
+                  key={area.id}
+                  center={[area.center_lat, area.center_lng]}
+                  radius={area.radius_km * 1000}
+                  pathOptions={{ color, fillColor: color, fillOpacity: 0.08, weight: 1.5, dashArray: '6 4' }}
+                >
+                  <Popup>
+                    <strong>{area.area_name || ngo?.org_name || 'NGO area'}</strong>
+                    <br />
+                    {ngo?.org_name ?? 'NGO'}
+                    <br />
+                    {area.radius_km} km radius
+                    {area.category ? ` · ${area.category}` : ''}
+                    {area.urgency ? ` · ${area.urgency}` : ''}
+                    {isPartial && (
+                      <>
+                        <br />
+                        <strong>Partially fulfilled</strong> — needs additional support
+                      </>
+                    )}
+                  </Popup>
+                </Circle>
+              );
+            })}
         </MapContainer>
 
         {selected && (
-          <div className="fixed right-0 top-0 z-[1000] h-full w-[calc(100vw-2rem)] overflow-y-auto border-l border-hairline bg-panel p-5 shadow-lg sm:w-80">
+          <div className="fixed inset-x-0 bottom-0 z-[1000] max-h-[80vh] overflow-y-auto rounded-t-xl border-t border-hairline bg-panel p-5 shadow-lg sm:inset-x-auto sm:right-0 sm:top-0 sm:h-full sm:max-h-full sm:w-80 sm:rounded-none sm:border-l sm:border-t-0">
             <button onClick={() => setSelected(null)} className="text-sm text-muted hover:text-paper">
               ✕ Close
             </button>

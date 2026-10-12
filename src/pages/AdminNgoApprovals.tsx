@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
 import { LocationPicker } from '../components/LocationPicker';
 import { PhoneActions } from '../components/PhoneActions';
-import type { Category, Urgency } from '../lib/types';
+import type { Category, Urgency, NgoAreaAssignment } from '../lib/types';
 
 interface PendingNgo {
   id: string;
@@ -65,6 +65,11 @@ export function AdminNgoApprovals() {
   const [urgency, setUrgency] = useState<Urgency | ''>('');
   const [allocating, setAllocating] = useState(false);
 
+  // Areas an NGO reported it can't fully cover, and (while an admin is reassigning one)
+  // which old assignment the NEW allocation will replace when saved.
+  const [partialAreas, setPartialAreas] = useState<NgoAreaAssignment[]>([]);
+  const [supersedingAreaId, setSupersedingAreaId] = useState<string | null>(null);
+
   useEffect(() => {
     async function checkAdmin() {
       const { data: userData } = await supabase.auth.getUser();
@@ -96,6 +101,9 @@ export function AdminNgoApprovals() {
 
       const { data: approvedData } = await supabase.from('ngos').select('id, org_name').eq('status', 'approved');
       if (approvedData) setApproved(approvedData);
+
+      const { data: partialData } = await supabase.from('ngo_area_assignments').select('*').eq('status', 'partially_fulfilled');
+      if (partialData) setPartialAreas(partialData);
     }
     loadNgos();
   }, [authorized]);
@@ -114,6 +122,20 @@ export function AdminNgoApprovals() {
     }
 
     setPending((current) => current.filter((n) => n.id !== ngoId));
+  }
+
+  // Pre-fills the allocation form from a partially-fulfilled area so the admin only has to
+  // pick a DIFFERENT organization; the old assignment is closed out when the new one is saved.
+  function startReassign(area: NgoAreaAssignment) {
+    setSupersedingAreaId(area.id);
+    setSelectedNgoId('');
+    setAreaName(area.area_name ?? '');
+    setCenter({ lat: area.center_lat, lng: area.center_lng });
+    setRadiusKm(String(area.radius_km));
+    setCategory(area.category ?? '');
+    setUrgency(area.urgency ?? '');
+    setSuccess('');
+    document.getElementById('area-allocation')?.scrollIntoView({ behavior: 'smooth' });
   }
 
   async function handleAllocate() {
@@ -136,22 +158,38 @@ export function AdminNgoApprovals() {
 
     setAllocating(true);
 
-    const { error: insertError } = await supabase.from('ngo_area_assignments').insert({
-      ngo_id: selectedNgoId,
-      center_lat: center.lat,
-      center_lng: center.lng,
-      radius_km: radius,
-      area_name: areaName || null,
-      category: category || null,
-      urgency: urgency || null,
-    });
+    // .select().single() returns the new row so the old assignment can point to it.
+    const { data: newArea, error: insertError } = await supabase
+      .from('ngo_area_assignments')
+      .insert({
+        ngo_id: selectedNgoId,
+        center_lat: center.lat,
+        center_lng: center.lng,
+        radius_km: radius,
+        area_name: areaName || null,
+        category: category || null,
+        urgency: urgency || null,
+      })
+      .select()
+      .single();
 
-    setAllocating(false);
-
-    if (insertError) {
-      setError(`Could not allocate area: ${insertError.message}`);
+    if (insertError || !newArea) {
+      setAllocating(false);
+      setError(`Could not allocate area: ${insertError?.message}`);
       return;
     }
+
+    // Reassigning: close the old assignment so its circle disappears from every map.
+    if (supersedingAreaId) {
+      await supabase
+        .from('ngo_area_assignments')
+        .update({ status: 'reassigned', superseded_by: newArea.id })
+        .eq('id', supersedingAreaId);
+      setPartialAreas((current) => current.filter((a) => a.id !== supersedingAreaId));
+      setSupersedingAreaId(null);
+    }
+
+    setAllocating(false);
 
     const ngoName = approved.find((n) => n.id === selectedNgoId)?.org_name ?? 'the organization';
     setSuccess(`Area allocated to ${ngoName}. It's now visible on the live map.`);
@@ -234,13 +272,52 @@ export function AdminNgoApprovals() {
           </ul>
         )}
 
-        <h2 className="mt-12 font-display text-lg font-semibold text-paper">Area allocation</h2>
+        {partialAreas.length > 0 && (
+          <>
+            <h2 className="mt-12 font-display text-lg font-semibold text-signal-orange">Areas needing attention</h2>
+            <p className="mt-1 text-sm text-muted">
+              An NGO reported it could only partly cover these areas. Reassign to bring in another organization.
+            </p>
+            <ul className="mt-4 flex flex-col gap-4">
+              {partialAreas.map((area) => (
+                <li key={area.id} className="rounded-xl border border-signal-orange/40 bg-panel p-5">
+                  <p className="font-display text-base font-semibold text-paper">{area.area_name || 'Unnamed area'}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Assigned to {approved.find((n) => n.id === area.ngo_id)?.org_name ?? 'an NGO'} · {area.radius_km} km ·{' '}
+                    {area.category ?? 'any category'} · {area.urgency ?? 'any urgency'}
+                  </p>
+                  {area.notes && <p className="mt-2 text-sm text-paper">"{area.notes}"</p>}
+                  <button
+                    onClick={() => startReassign(area)}
+                    className="mt-3 rounded-md bg-signal-orange px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                  >
+                    Reassign to another NGO
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <h2 id="area-allocation" className="mt-12 font-display text-lg font-semibold text-paper">
+          Area allocation
+        </h2>
         <p className="mt-1 text-sm text-muted">
           Give one organization exclusive responsibility for an area, category, and urgency so two teams never go to
           the same place.
         </p>
 
         {success && <p className="mt-4 text-sm text-signal">{success}</p>}
+
+        {supersedingAreaId && (
+          <p className="mt-4 rounded-md border border-signal-orange/40 bg-signal-orange/10 p-3 text-sm text-paper">
+            Reassigning an area an NGO could only partly cover — pick a different organization below. The old
+            assignment is closed out when you allocate.
+            <button onClick={() => setSupersedingAreaId(null)} className="ml-2 text-xs text-muted underline">
+              Cancel
+            </button>
+          </p>
+        )}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
           <div>

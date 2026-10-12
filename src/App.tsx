@@ -15,6 +15,8 @@ import { NgoCompleteProfile } from './pages/NgoCompleteProfile';
 import { NgoPending } from './pages/NgoPending';
 import { AdminNgoApprovals } from './pages/AdminNgoApprovals';
 import { AdminRequests } from './pages/AdminRequests';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { RequestTracking } from './pages/RequestTracking';
 import { OfflineBanner } from './components/OfflineBanner';
 import { useOfflineSync } from './hooks/useOfflineSync';
 
@@ -50,6 +52,8 @@ function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin/ngos" element={<AdminNgoApprovals />} />
         <Route path="/admin/requests" element={<AdminRequests />} />
+        <Route path="/volunteer/forgot-password" element={<ForgotPassword />} />
+        <Route path="/track/:requestId" element={<RequestTracking />} />
       </Routes>
 
       <OfflineBanner pendingCount={pendingCount} />

@@ -5,6 +5,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { LocationPicker } from '../components/LocationPicker';
 import { Header } from '../components/Header';
@@ -185,6 +186,13 @@ export function RequestHelp() {
                 someone to read aloud over a phone call if needed. */}
             <p className="font-data text-lg text-paper">{trackingId.slice(0, 8)}</p>
           </div>
+          {/* Full id (not the shortened display one): the tracking page needs the real UUID. */}
+          <Link
+            to={`/track/${trackingId}`}
+            className="mt-2 rounded-md bg-signal px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Track your request & message your responder
+          </Link>
         </div>
       </div>
     );
