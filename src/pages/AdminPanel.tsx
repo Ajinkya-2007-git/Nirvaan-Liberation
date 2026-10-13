@@ -231,6 +231,9 @@ export function AdminPanel() {
       <Header />
       <UrgencyFilterBar active={activeUrgencies} onToggle={toggleUrgency} />
       <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 border-b border-hairline bg-panel px-4 py-2 sm:px-6">
+        <Link to="/admin/impact" className="text-sm text-signal hover:underline">
+          Impact →
+        </Link>
         <Link to="/admin/requests" className="text-sm text-signal hover:underline">
           Requests list →
         </Link>

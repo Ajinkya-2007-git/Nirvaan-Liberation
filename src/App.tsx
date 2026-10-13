@@ -17,6 +17,7 @@ import { AdminNgoApprovals } from './pages/AdminNgoApprovals';
 import { AdminRequests } from './pages/AdminRequests';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { RequestTracking } from './pages/RequestTracking';
+import { AdminImpact } from './pages/AdminImpact';
 import { OfflineBanner } from './components/OfflineBanner';
 import { useOfflineSync } from './hooks/useOfflineSync';
 
@@ -54,6 +55,7 @@ function App() {
         <Route path="/admin/requests" element={<AdminRequests />} />
         <Route path="/volunteer/forgot-password" element={<ForgotPassword />} />
         <Route path="/track/:requestId" element={<RequestTracking />} />
+        <Route path="/admin/impact" element={<AdminImpact />} />
       </Routes>
 
       <OfflineBanner pendingCount={pendingCount} />
