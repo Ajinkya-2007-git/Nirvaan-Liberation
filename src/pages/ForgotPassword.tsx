@@ -63,7 +63,7 @@ export function ForgotPassword() {
     setSubmitting(false);
 
     if (profile?.role === 'admin') {
-      navigate('/admin');
+      navigate('/map');
       return;
     }
     if (profile?.role === 'ngo_admin') {

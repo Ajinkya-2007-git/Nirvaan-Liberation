@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
+import { AdminTabs } from '../components/AdminTabs';
 import { LocationPicker } from '../components/LocationPicker';
 import { PhoneActions } from '../components/PhoneActions';
 import type { Category, Urgency, NgoAreaAssignment } from '../lib/types';
@@ -216,10 +217,11 @@ export function AdminNgoApprovals() {
   return (
     <div className="min-h-screen bg-ink">
       <Header />
+      <AdminTabs />
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex items-center justify-between">
           <h1 className="font-display text-2xl font-semibold text-paper">NGO approvals</h1>
-          <Link to="/admin" className="text-sm text-signal hover:underline">
+          <Link to="/map" className="text-sm text-signal hover:underline">
             ← Back to live map
           </Link>
         </div>

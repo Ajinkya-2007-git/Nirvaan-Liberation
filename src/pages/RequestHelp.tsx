@@ -1,84 +1,113 @@
-// This is the public emergency request form. Deliberately no login
-// required — see schema.sql's "anyone can submit an sos request"
-// policy, which is what makes this actually work against the
-// database without an account.
-
-import { useState, type FormEvent } from 'react';
-import { useTranslation } from 'react-i18next';
+// Public emergency request form (no login). Three numbered sections: your details, where help
+// is needed (current location or a tapped pin), and what's happening. Keeps the same behaviour
+// as before: AI triage when online, and saving on the device when there's no connection.
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, ArrowRight, LocateFixed, Check, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { LocationPicker } from '../components/LocationPicker';
 import { Header } from '../components/Header';
+import { EmergencyBar } from '../components/EmergencyBar';
+import { LocationPicker } from '../components/LocationPicker';
+import { usePlaceName } from '../hooks/usePlaceName';
 import { queueSosSubmission } from '../lib/offlineQueue';
-import type { Relationship } from '../lib/types';
+
+// Stores Indian mobile numbers in a consistent +91 form; anything else is kept as typed.
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  const local = digits.length > 10 && digits.startsWith('91') ? digits.slice(-10) : digits;
+  return local.length === 10 ? `+91${local}` : raw.trim();
+}
+
+// Numbered section heading.
+function SectionTitle({ n, children }: { n: number; children: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-aqua text-sm font-semibold text-signal">{n}</span>
+      <h2 className="font-display text-xl font-semibold text-paper">{children}</h2>
+    </div>
+  );
+}
+
+const inputClass =
+  'mt-2 min-h-12 w-full rounded-xl border border-hairline bg-panel px-4 text-base text-paper placeholder:text-muted/70';
+
+// Shared shell for the two result screens (kept outside the form so it isn't rebuilt on every keystroke).
+function ResultScreen({ title, body, queued = false, children }: { title: string; body: string; queued?: boolean; children?: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-ink">
+      <Header />
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-16 text-center">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-aqua text-signal">
+          {queued ? <Clock size={30} /> : <Check size={30} />}
+        </span>
+        <h1 className="font-display text-2xl font-bold text-paper">{title}</h1>
+        <p className="text-muted">{body}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function RequestHelp() {
   const { t } = useTranslation();
-  // One piece of state per form field. We could combine these into
-  // one big object, but keeping them separate makes each input's
-  // code easier to read for now — a fine tradeoff for a form this size.
-  const [reporterName, setReporterName] = useState('');
-  const [reporterPhone, setReporterPhone] = useState('');
-  const [relationship, setRelationship] = useState<Relationship>('self');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [relationship, setRelationship] = useState<'self' | 'other'>('self');
   const [landmark, setLandmark] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  // Tracks whether we're mid-submit, so we can disable the button
-  // and show "Sending..." instead of letting someone double-click
-  // and accidentally create two identical emergency requests.
+  const [locating, setLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  // Holds an error message to show the user if something goes wrong
-  // (e.g. no internet). Empty string = no error.
   const [error, setError] = useState('');
-
-  // Once the request is successfully saved, we store its ID here.
-  // Its presence is also what flips the screen over to the
-  // confirmation view — see the "if (trackingId)" check below.
   const [trackingId, setTrackingId] = useState<string | null>(null);
-
-  // True when there's genuinely no connection and the submission got
-  // saved locally instead — a DIFFERENT outcome from trackingId
-  // above, since there's no real database id yet (it doesn't exist
-  // on the server until this device syncs it later).
   const [queued, setQueued] = useState(false);
 
-  // Runs when the form is submitted (button clicked or Enter pressed).
-  async function handleSubmit(e: FormEvent) {
-    // Stops the browser's default behavior of reloading the whole
-    // page on form submit — we want to handle it with JavaScript instead.
-    e.preventDefault();
+  const place = usePlaceName(location?.lat, location?.lng);
 
-    // Guard clause: don't let the request through without a location,
-    // since latitude/longitude are required (not-null) columns in
-    // the database and the insert would fail anyway — this just
-    // gives a friendlier error before we even try.
+  function useCurrentLocation() {
+    setLocating(true);
+    setError('');
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLocation({ lat: p.coords.latitude, lng: p.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        setError(t('form.locationError'));
+        setLocating(false);
+      },
+      // A time limit so it can't hang forever with no signal.
+      { timeout: 10000, maximumAge: 0 }
+    );
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError('');
     if (!location) {
-      setError('Please tap the map to mark the location.');
+      setError(t('form.needLocation'));
       return;
     }
-
     setSubmitting(true);
-    setError('');
 
+    // Created here so the tracking link can be shown without reading the row back
+    // (visitors without an account can create requests but not read them), and so a retry
+    // after a bad connection is recognised as the same request, not a duplicate.
     const payload = {
-      reporter_name: reporterName,
-      reporter_phone: reporterPhone,
+      id: crypto.randomUUID(),
+      reporter_name: name.trim(),
+      reporter_phone: normalizePhone(phone),
       relationship,
       latitude: location.lat,
       longitude: location.lng,
-      landmark,
-      description,
+      landmark: landmark.trim() || null,
+      description: description.trim(),
       category: null as string | null,
       urgency: null as string | null,
     };
 
-    // If there's genuinely no connection, skip straight to queuing —
-    // no point spending several seconds waiting on an AI
-    // classification call and a database insert that are both
-    // guaranteed to fail anyway. Someone in an emergency shouldn't
-    // have to wait out a timeout to find out they're offline.
+    // No connection: save on the device right away instead of waiting on requests that can't work.
     if (!navigator.onLine) {
       await queueSosSubmission(payload);
       setSubmitting(false);
@@ -86,48 +115,27 @@ export function RequestHelp() {
       return;
     }
 
-    // STEP 1: ask the AI classification edge function to read the
-    // description and return a category + urgency. This is wrapped
-    // in its own try/catch on purpose — if this call fails for ANY
-    // reason (no internet, the AI provider having a bad moment,
-    // whatever), we do NOT want that to block someone's actual
-    // emergency submission. Worst case, category/urgency just stay
-    // empty and the pin shows up black — a real, working fallback
-    // state that already exists elsewhere in this app, not a broken
-    // one.
+    // AI triage. If it fails for any reason the request still goes through, just unclassified.
     try {
       const { data: classification, error: fnError } = await supabase.functions.invoke('classify-request', {
-        body: { description },
+        body: { description: payload.description },
       });
       if (!fnError && classification) {
         payload.category = classification.category;
         payload.urgency = classification.urgency;
       } else {
-        // Logs the exact reason classification didn't work to the
-        // browser console (F12 → Console) — never shown to the end
-        // user, but genuinely useful for catching future issues
-        // rather than something to remove before launch.
         console.error('Classification did not return a result:', fnError, classification);
       }
     } catch (err) {
       console.error('Classification call threw an error:', err);
     }
 
-    // STEP 2: save the request, now including whatever the AI
-    // decided (or null/null if that call didn't work out). Any
-    // failure here — not just an explicit network error, but ANYTHING
-    // that stops this insert from succeeding — falls back to the
-    // same offline queue as above. A flaky connection can fail a
-    // request even while navigator.onLine still reports "true", so
-    // this catch-all is what actually makes the offline guarantee
-    // hold up in practice, not just the explicit check above.
+    // Save it. Any failure falls back to the on-device queue, which syncs later.
     try {
-      const { data, error: insertError } = await supabase.from('sos_requests').insert(payload).select().single();
-
+      const { error: insertError } = await supabase.from('sos_requests').insert(payload);
       if (insertError) throw insertError;
-
       setSubmitting(false);
-      setTrackingId(data.id);
+      setTrackingId(payload.id);
     } catch (err) {
       await queueSosSubmission(payload);
       setSubmitting(false);
@@ -136,163 +144,173 @@ export function RequestHelp() {
     }
   }
 
-  // OFFLINE-QUEUED SCREEN — shown when there was no way to actually
-  // reach the server, but the submission is safely saved on this
-  // device and will send itself once a connection returns (see
-  // useOfflineSync.ts, which runs globally in App.tsx).
   if (queued) {
     return (
-      <div className="min-h-screen bg-ink">
-        <Header />
-        <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 px-6 py-24 text-center">
-          <div className="rounded-full bg-signal-orange/10 p-4">
-            <svg className="h-10 w-10 text-signal-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <h1 className="font-display text-2xl font-semibold text-paper">Saved — no connection right now</h1>
-          <p className="text-muted">
-            Your request was saved on this device. It will send automatically the moment you're back online — you
-            don't need to submit it again.
-          </p>
-        </div>
-      </div>
+      <ResultScreen title={t('form.queuedTitle')} body={t('form.queuedBody')} queued>
+        <Link to="/" className="font-semibold text-signal hover:underline">
+          {t('form.backHome')}
+        </Link>
+      </ResultScreen>
     );
   }
 
-  // CONFIRMATION SCREEN — shown instead of the form once a request
-  // has been successfully saved.
   if (trackingId) {
     return (
-      <div className="min-h-screen bg-ink">
-        <Header />
-        <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 px-6 py-24 text-center">
-          <div className="rounded-full bg-signal/10 p-4">
-            <svg className="h-10 w-10 text-signal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="font-display text-2xl font-semibold text-paper">{t('requestHelp.confirmTitle')}</h1>
-          <p className="text-muted">{t('requestHelp.confirmBody')}</p>
-          <div className="mt-2 rounded-lg border border-hairline bg-panel px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-muted">{t('requestHelp.trackingId')}</p>
-            {/* .slice(0, 8) shows a short, readable piece of the id
-                instead of the full 36-character UUID — easier for
-                someone to read aloud over a phone call if needed. */}
-            <p className="font-data text-lg text-paper">{trackingId.slice(0, 8)}</p>
-          </div>
-          {/* Full id (not the shortened display one): the tracking page needs the real UUID. */}
-          <Link
-            to={`/track/${trackingId}`}
-            className="mt-2 rounded-md bg-signal px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-          >
-            Track your request & message your responder
-          </Link>
+      <ResultScreen title={t('requestHelp.confirmTitle')} body={t('requestHelp.confirmBody')}>
+        <div className="w-full rounded-xl border border-hairline bg-panel px-4 py-3">
+          <p className="text-xs uppercase tracking-wide text-muted">{t('requestHelp.trackingId')}</p>
+          <p className="font-data text-lg text-paper">{trackingId.slice(0, 8)}</p>
         </div>
-      </div>
+        {/* Full id for the link; the short one above is just for reading out loud. */}
+        <Link
+          to={`/track/${trackingId}`}
+          className="flex min-h-12 w-full items-center justify-center rounded-xl bg-signal px-4 font-semibold text-white hover:opacity-90"
+        >
+          {t('form.track')}
+        </Link>
+        <Link to="/" className="font-semibold text-signal hover:underline">
+          {t('form.backHome')}
+        </Link>
+      </ResultScreen>
     );
   }
 
-  // THE FORM — shown by default, before submission.
   return (
     <div className="min-h-screen bg-ink">
       <Header />
-      <div className="mx-auto max-w-lg px-6 py-10">
-        <h1 className="font-display text-2xl font-semibold text-paper">{t('requestHelp.title')}</h1>
-        <p className="mt-1 text-muted">{t('requestHelp.subtitle')}</p>
+      <EmergencyBar />
 
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-5">
-          <div>
-            <label className="block text-sm font-medium text-paper">{t('requestHelp.yourName')}</label>
+      <form onSubmit={handleSubmit} className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
+        <Link to="/" className="inline-flex items-center gap-2 text-sm font-medium text-signal hover:underline">
+          <ArrowLeft size={16} />
+          {t('form.back')}
+        </Link>
+        <h1 className="mt-5 font-display text-4xl font-bold text-paper">{t('form.title')}</h1>
+        <p className="mt-3 text-lg text-muted">{t('form.lead')}</p>
+        <p className="mt-3 text-sm text-muted">{t('form.required')}</p>
+
+        {/* 1. YOUR DETAILS */}
+        <div className="mt-8">
+          <SectionTitle n={1}>{t('form.s1')}</SectionTitle>
+
+          <label className="mt-5 block text-sm font-semibold text-paper">
+            {t('form.name')} *
             <input
               type="text"
               required
-              value={reporterName}
-              // Every input follows this same pattern: read the
-              // current value from state, and on every keystroke
-              // ("onChange") write the new value back into state.
-              // This is called a "controlled input" in React.
-              onChange={(e) => setReporterName(e.target.value)}
-              className="mt-1 w-full rounded-md border border-hairline bg-panel px-3 py-2 text-paper focus:border-signal focus:outline-none"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('form.namePlaceholder') ?? undefined}
+              className={inputClass}
             />
-          </div>
+          </label>
 
-          <div>
-            <label className="block text-sm font-medium text-paper">{t('requestHelp.phoneNumber')}</label>
-            <input
-              type="tel"
-              required
-              value={reporterPhone}
-              onChange={(e) => setReporterPhone(e.target.value)}
-              className="mt-1 w-full rounded-md border border-hairline bg-panel px-3 py-2 text-paper focus:border-signal focus:outline-none"
-            />
-          </div>
+          <label className="mt-5 block text-sm font-semibold text-paper">
+            {t('form.phone')} *
+            <div className="mt-2 flex min-h-12 items-center gap-3 rounded-xl border border-hairline bg-panel px-4 focus-within:border-signal">
+              <span className="text-base text-muted">+91</span>
+              <input
+                type="tel"
+                inputMode="numeric"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t('form.phonePlaceholder') ?? undefined}
+                className="min-h-11 w-full bg-transparent text-base font-normal text-paper outline-none placeholder:text-muted/70"
+              />
+            </div>
+          </label>
+          <p className="mt-2 text-sm text-muted">{t('form.phoneHint')}</p>
 
-          <div>
-            <label className="block text-sm font-medium text-paper">{t('requestHelp.whoNeedsHelp')}</label>
-            <select
-              value={relationship}
-              // The cast "as Relationship" tells TypeScript to trust
-              // that this string is one of our four allowed values —
-              // safe here because the <option> values below are the
-              // only options the user could possibly pick.
-              onChange={(e) => setRelationship(e.target.value as Relationship)}
-              className="mt-1 w-full rounded-md border border-hairline bg-panel px-3 py-2 text-paper"
-            >
-              <option value="self">{t('requestHelp.relationshipSelf')}</option>
-              <option value="relative">{t('requestHelp.relationshipRelative')}</option>
-              <option value="neighbor">{t('requestHelp.relationshipNeighbor')}</option>
-              <option value="other">{t('requestHelp.relationshipOther')}</option>
-            </select>
+          <p className="mt-5 text-sm font-semibold text-paper">{t('form.whoNeeds')} *</p>
+          <div className="mt-2 grid grid-cols-2 gap-3" role="radiogroup">
+            {(['self', 'other'] as const).map((value) => {
+              const selected = relationship === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setRelationship(value)}
+                  className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 text-base font-medium text-paper transition ${
+                    selected ? 'border-signal bg-aqua' : 'border-hairline bg-panel'
+                  }`}
+                >
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${selected ? 'border-signal' : 'border-muted'}`}>
+                    {selected && <span className="h-2.5 w-2.5 rounded-full bg-signal" />}
+                  </span>
+                  {value === 'self' ? t('form.myself') : t('form.someone')}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-paper">{t('requestHelp.location')}</label>
-            <div className="mt-1">
-              <LocationPicker value={location} onChange={(lat, lng) => setLocation({ lat, lng })} />
+        {/* 2. WHERE */}
+        <div className="mt-10">
+          <SectionTitle n={2}>{t('form.s2')}</SectionTitle>
+          <p className="mt-3 text-muted">{t('form.locHint')}</p>
+
+          <button
+            type="button"
+            onClick={useCurrentLocation}
+            disabled={locating}
+            className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-hairline bg-panel font-semibold text-paper transition hover:border-signal disabled:opacity-60"
+          >
+            <LocateFixed size={18} />
+            {locating ? t('form.locating') : t('form.useLocation')}
+          </button>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-hairline bg-panel">
+            <LocationPicker value={location} onChange={(lat, lng) => setLocation({ lat, lng })} className="h-64 sm:h-80" />
+            <div className="border-t border-hairline px-4 py-3">
+              <p className="font-semibold text-paper">{location ? (place ?? t('form.selected')) : t('form.tapMap')}</p>
+              <p className="mt-0.5 text-sm text-muted">
+                {location ? `${t('form.selected')} · ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : t('form.notSelected')}
+              </p>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-paper">{t('requestHelp.landmark')}</label>
+          <label className="mt-5 block text-sm font-semibold text-paper">
+            {t('form.landmark')} · <span className="font-normal text-muted">{t('form.optional')}</span>
             <input
               type="text"
-              placeholder={t('requestHelp.landmarkPlaceholder') ?? undefined}
               value={landmark}
               onChange={(e) => setLandmark(e.target.value)}
-              className="mt-1 w-full rounded-md border border-hairline bg-panel px-3 py-2 text-paper focus:border-signal focus:outline-none"
+              placeholder={t('form.landmarkPlaceholder') ?? undefined}
+              className={inputClass}
             />
-          </div>
+          </label>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-paper">{t('requestHelp.description')}</label>
+        {/* 3. WHAT'S HAPPENING */}
+        <div className="mt-10">
+          <SectionTitle n={3}>{t('form.s3')}</SectionTitle>
+          <label className="mt-5 block text-sm font-semibold text-paper">
+            {t('form.describe')} *
             <textarea
               required
-              rows={3}
-              placeholder={t('requestHelp.descriptionPlaceholder') ?? undefined}
+              rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 w-full rounded-md border border-hairline bg-panel px-3 py-2 text-paper focus:border-signal focus:outline-none"
+              placeholder={t('form.describePlaceholder') ?? undefined}
+              className="mt-2 w-full rounded-xl border border-hairline bg-panel px-4 py-3 text-base text-paper placeholder:text-muted/70"
             />
-          </div>
+          </label>
+        </div>
 
-          {/* Only rendered when there's actually an error to show. */}
-          {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-6 text-sm font-medium text-red-400">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-[#dc2626] px-4 py-3 font-semibold text-white transition hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? t('requestHelp.sending') : t('requestHelp.submit')}
-          </button>
-        </form>
-      </div>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-8 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-signal text-base font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+        >
+          <ArrowRight size={20} />
+          {submitting ? t('form.sending') : t('form.submit')}
+        </button>
+      </form>
     </div>
   );
 }

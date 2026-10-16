@@ -1,177 +1,191 @@
-// The landing page. Restructured to match a real product-marketing
-// layout: a badge, a clear headline hierarchy, a row of equally-
-// weighted action buttons, a "how it works" explainer, and a
-// floating SOS button that stays reachable even after scrolling
-// past the hero — rather than the earlier version's single centered
-// button with everything else as an afterthought below it.
-
-import { Link } from 'react-router-dom';
+// Home page: emergency actions first (Request Help, then SOS, then Call 112), then the live
+// map preview, ways to join, emergency contacts, and how help is coordinated.
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Radio, HeartHandshake, Phone } from 'lucide-react';
+import { HandHelping, Siren, Phone, ArrowUpRight, Users, Building2 } from 'lucide-react';
 import { Header } from '../components/Header';
+import { EmergencyBar } from '../components/EmergencyBar';
+import { MapPreview } from '../components/MapPreview';
+import { Footer } from '../components/Footer';
 import { QuickSosModal } from '../components/QuickSosModal';
 import { useQuickSos } from '../hooks/useQuickSos';
 
-// Verified against NDMA's and the Ministry of Home Affairs' own
-// official pages, current as of 2026 — not something to guess at,
-// since a wrong emergency number on a disaster app is a genuinely
-// harmful mistake, not just an inaccuracy. 112 is India's single
-// unified emergency number (routes to police/fire/medical); the
-// others are the specific disaster-management lines this app's own
-// use case is most directly relevant to.
-const EMERGENCY_NUMBERS = [
-  { number: '112', label: 'National Emergency Number', note: 'Police, fire, or medical — single number for any emergency' },
-  { number: '108', label: 'Emergency Ambulance', note: 'Medical emergencies requiring transport' },
-  { number: '101', label: 'Fire Brigade', note: 'Fire and rescue services' },
-  { number: '1070', label: 'National Disaster Management Helpline', note: 'NDMA control room, Ministry of Home Affairs' },
-  { number: '1078', label: 'Disaster Management Helpline', note: 'Ministry of Home Affairs' },
-];
-
 export function Landing() {
   const { t } = useTranslation();
+  const location = useLocation();
+  // One shared Quick SOS flow (location -> save -> confirmation modal).
+  const sos = useQuickSos();
 
-  // Defined inside the component (not as a top-level constant) so
-  // the titles/descriptions re-read from t() whenever the language
-  // changes — a top-level array built once at import time would
-  // freeze on whatever language loaded first.
-  const steps = [
-    { icon: MapPin, title: t('landing.step1Title'), description: t('landing.step1Desc') },
-    { icon: Radio, title: t('landing.step2Title'), description: t('landing.step2Desc') },
-    { icon: HeartHandshake, title: t('landing.step3Title'), description: t('landing.step3Desc') },
+  // The "Join the network" menu link points to /#join: scroll there when it's in the URL.
+  useEffect(() => {
+    if (location.hash === '#join') document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' });
+  }, [location]);
+
+  // Verified national numbers (112 is the unified emergency number).
+  const contacts = [
+    { number: '112', label: t('emergency.nationalNumber'), danger: true },
+    { number: '108', label: t('emergency.ambulance'), danger: false },
+    { number: '101', label: t('emergency.fire'), danger: false },
+    { number: '1070', label: t('emergency.ndmh'), danger: false },
+    { number: '1078', label: t('emergency.dmh'), danger: false },
   ];
 
-  // One shared hook instance for the WHOLE page — both the button in
-  // the hero row and the floating button below call the same
-  // .submit(), so there's only ever one modal, one status, one
-  // source of truth, no matter which button was actually pressed.
-  const sos = useQuickSos();
+  const steps = [
+    { n: 1, title: t('home.step1'), body: t('home.step1Body') },
+    { n: 2, title: t('home.step2'), body: t('home.step2Body') },
+    { n: 3, title: t('home.step3'), body: t('home.step3Body') },
+  ];
+
+  const sosBusy = sos.status === 'locating' || sos.status === 'sending';
 
   return (
     <div className="min-h-screen bg-ink">
       <Header />
+      <EmergencyBar />
 
-      {/* HERO — widened to max-w-6xl and split into a grid ONLY so
-          the emergency-numbers card has somewhere to sit on larger
-          screens; every existing element inside the left column
-          below is completely unchanged. On small screens the grid
-          collapses to a single column and the numbers card just sits
-          underneath, matching how this page already behaved on
-          mobile. */}
-      <section className="mx-auto max-w-6xl px-6 pb-16 pt-16">
-        <div className="grid gap-10 lg:grid-cols-[1fr_300px]">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6">
+        {/* HERO */}
+        <section className="grid gap-8 py-8 lg:grid-cols-2 lg:items-center lg:py-12">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-panel px-4 py-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-              {t('landing.badge')}
-            </span>
+            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-signal">
+              <HandHelping size={14} />
+              {t('home.eyebrow')}
+            </p>
+            <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-paper sm:text-5xl lg:text-6xl">
+              {t('home.headline')}
+            </h1>
+            <p className="mt-4 max-w-xl text-base text-muted sm:text-lg">{t('home.lead')}</p>
 
-            <h1 className="mt-6 font-display text-5xl font-extrabold tracking-tight text-paper sm:text-6xl">Nirvaan</h1>
-            <p className="mt-2 font-display text-2xl font-semibold text-signal-orange">{t('landing.subhead')}</p>
-            <p className="mt-4 max-w-2xl text-muted">{t('landing.description')}</p>
+            <Link
+              to="/request-help"
+              className="mt-7 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-signal text-base font-semibold text-white transition hover:opacity-90"
+            >
+              <HandHelping size={20} />
+              {t('home.requestHelp')}
+            </Link>
+            <p className="mt-2 text-sm text-muted">{t('home.requestHelpNote')}</p>
 
-            {/* Four buttons, equal visual weight — no single one crowds
-                out the others. Emergency SOS still uses the shared hook
-                above instead of navigating anywhere, since it submits
-                immediately rather than opening a form. */}
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                to="/request-help"
-                className="rounded-lg bg-signal-orange px-5 py-3 font-semibold text-white transition hover:opacity-90"
-              >
-                {t('landing.requestHelpBtn')}
-              </Link>
+            {/* Emergency SOS: its own card, kept apart from the main action. */}
+            <div className="mt-5 rounded-2xl bg-blush p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+              <div className="mb-3 sm:mb-0">
+                <p className="hidden font-semibold text-paper sm:block">{t('home.sosTitle')}</p>
+                <p className="text-sm text-muted">{t('home.sosBody')}</p>
+              </div>
               <button
                 onClick={sos.submit}
-                disabled={sos.status === 'locating' || sos.status === 'sending'}
-                className="rounded-lg bg-signal-red px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                disabled={sosBusy}
+                className="flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-signal-red px-6 font-semibold text-white transition hover:opacity-90 disabled:opacity-60 sm:w-auto"
               >
-                {t('landing.emergencySos')}
+                <Siren size={18} />
+                {t('home.sos')}
               </button>
-              <Link
-                to="/volunteer/signup"
-                className="rounded-lg border border-hairline px-5 py-3 font-semibold text-paper transition hover:border-signal"
-              >
-                {t('landing.volunteerSignup')}
-              </Link>
-              <Link
-                to="/ngo/signup"
-                className="rounded-lg border border-hairline px-5 py-3 font-semibold text-paper transition hover:border-signal"
-              >
-                {t('landing.ngoSignup')}
-              </Link>
             </div>
 
-            <p className="mt-4 text-sm text-muted">{t('landing.disclaimer')}</p>
+            {/* Phone only: Call 112 as its own card (desktop has it in the contacts strip). */}
+            <a
+              href="tel:112"
+              className="mt-5 flex min-h-16 items-center justify-between rounded-2xl border border-hairline bg-panel px-5 py-4 sm:hidden"
+            >
+              <span className="flex items-center gap-4">
+                <Phone size={26} className="text-danger" />
+                <span>
+                  <span className="block font-display text-2xl font-bold text-danger">{t('emergency.call112')}</span>
+                  <span className="block text-sm text-muted">{t('emergency.nationalNumber')}</span>
+                </span>
+              </span>
+              <ArrowUpRight size={20} className="text-danger" />
+            </a>
           </div>
 
-          {/* Emergency numbers sidebar — a genuinely separate concern
-              from the app's own SOS flow (this app connects you to
-              volunteers/NGOs; these are the actual government
-              emergency lines for immediate danger), so it's placed
-              as its own clearly-labeled card rather than mixed into
-              the hero's own messaging. */}
-          <aside className="h-fit rounded-xl border border-hairline bg-panel p-5">
-            <h2 className="font-display text-sm font-semibold text-paper">Government emergency numbers</h2>
-            <ul className="mt-4 flex flex-col gap-4">
-              {EMERGENCY_NUMBERS.map((item) => (
-                <li key={item.number} className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-signal/10 text-signal">
-                    <Phone size={14} />
-                  </div>
-                  <div>
-                    <a href={`tel:${item.number}`} className="font-data text-lg font-semibold text-paper hover:text-signal">
-                      {item.number}
-                    </a>
-                    <p className="text-xs font-medium text-paper">{item.label}</p>
-                    <p className="text-xs text-muted">{item.note}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        </div>
-      </section>
+          <MapPreview />
+        </section>
 
-      {/* HOW IT WORKS */}
-      <section className="border-t border-hairline bg-panel/40 px-6 py-16">
-        <div className="mx-auto max-w-4xl">
-          <h2 className="font-display text-2xl font-bold text-paper">{t('landing.howItWorks')}</h2>
+        {/* EMERGENCY CONTACTS: desktop strip */}
+        <section className="hidden rounded-2xl border border-hairline bg-panel p-6 sm:block">
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="font-display text-lg font-semibold text-paper">{t('emergency.contactsTitle')}</h2>
+            <p className="text-sm text-muted">{t('emergency.contactsHint')}</p>
+          </div>
+          <div className="mt-5 grid grid-cols-5 gap-4">
+            {contacts.map((c) => (
+              <a key={c.number} href={`tel:${c.number}`} className="group">
+                <span className={`flex items-center gap-2 font-display text-2xl ${c.danger ? 'text-danger' : 'text-signal'}`}>
+                  <Phone size={18} />
+                  {c.number}
+                </span>
+                <span className="mt-1 block text-sm text-muted group-hover:text-paper">{c.label}</span>
+              </a>
+            ))}
+          </div>
+        </section>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {steps.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="rounded-xl border border-hairline bg-panel p-5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-signal/10 text-signal">
-                  <Icon size={18} />
+        {/* JOIN */}
+        <section id="join" className="scroll-mt-24 py-10 sm:py-8">
+          <h2 className="mb-4 font-display text-2xl font-bold text-paper sm:sr-only">{t('home.joinTitle')}</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { Icon: Users, title: t('home.volunteer'), body: t('home.volunteerBody'), up: '/volunteer/signup' },
+              { Icon: Building2, title: t('home.ngo'), body: t('home.ngoBody'), up: '/ngo/signup' },
+            ].map(({ Icon, title, body, up }) => (
+              <div key={title} className="relative flex gap-4 rounded-2xl border border-hairline bg-aqua p-5">
+                <Icon size={28} className="mt-1 shrink-0 text-signal" />
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-paper">{title}</h3>
+                  <p className="mt-1 text-muted">{body}</p>
+                  <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-signal">
+                    <Link to={up} className="inline-flex items-center gap-1 hover:underline">
+                      {t('home.signUp')}
+                      <ArrowUpRight size={13} />
+                    </Link>
+                    <span aria-hidden>·</span>
+                    <Link to="/volunteer/login" className="hover:underline">
+                      {t('home.logIn')}
+                    </Link>
+                  </p>
                 </div>
-                <p className="mt-4 font-semibold text-paper">{title}</p>
-                <p className="mt-1 text-sm text-muted">{description}</p>
+                <ArrowUpRight size={18} className="absolute right-5 top-5 hidden text-signal sm:block" />
               </div>
             ))}
           </div>
+        </section>
 
-          <Link to="/map" className="mt-8 inline-flex items-center gap-1 text-sm font-medium text-signal hover:underline">
-            {t('landing.liveMapLink')}
-          </Link>
-        </div>
-      </section>
+        {/* EMERGENCY CONTACTS: phone list */}
+        <section className="pb-6 sm:hidden">
+          <h2 className="mb-3 font-display text-2xl font-bold text-paper">{t('emergency.contactsTitle')}</h2>
+          <ul className="rounded-2xl border border-hairline bg-panel px-5">
+            {contacts.slice(1).map((c) => (
+              <li key={c.number} className="border-b border-hairline last:border-0">
+                <a href={`tel:${c.number}`} className="flex min-h-16 items-center gap-4 py-3">
+                  <span className="w-16 font-display text-2xl text-signal">{c.number}</span>
+                  <span className="flex-1 text-sm text-paper">{c.label}</span>
+                  <Phone size={20} className="text-signal" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <div className="px-6 py-8 text-center text-sm text-muted">
-        {t('landing.alreadyVolunteer')}{' '}
-        <Link to="/volunteer/login" className="text-signal hover:underline">
-          {t('landing.logIn')}
-        </Link>
-      </div>
+        {/* HOW HELP IS COORDINATED */}
+        <section className="py-6 sm:py-10">
+          <h2 className="font-display text-2xl font-bold text-paper">{t('home.howTitle')}</h2>
+          <div className="mt-5 grid gap-6 sm:grid-cols-3">
+            {steps.map((s) => (
+              <div key={s.n} className="flex gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-aqua font-semibold text-signal">
+                  {s.n}
+                </span>
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-paper">{s.title}</h3>
+                  <p className="mt-1 text-muted">{s.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
 
-      {/* FLOATING SOS BUTTON — fixed to the viewport, so it's always
-          reachable even after scrolling past the hero. Triggers the
-          exact same submit() as the button in the row above. */}
-      <button
-        onClick={sos.submit}
-        disabled={sos.status === 'locating' || sos.status === 'sending'}
-        className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-signal-red font-display text-sm font-bold text-white shadow-[0_0_30px_rgba(220,38,38,0.5)] transition hover:scale-105 disabled:opacity-60"
-      >
-        SOS
-      </button>
-
+      <Footer />
       <QuickSosModal status={sos.status} trackingId={sos.trackingId} error={sos.error} onClose={sos.reset} />
     </div>
   );

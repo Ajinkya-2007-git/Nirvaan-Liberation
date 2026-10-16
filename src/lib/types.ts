@@ -34,6 +34,9 @@ export interface SosRequest {
   assigned_responder_type?: 'volunteer' | 'ngo';
   created_at: string;
   updated_at: string;
+  // Stamped by the database when a responder is assigned / the request is resolved.
+  assigned_at?: string;
+  resolved_at?: string;
 }
 
 // The shape of one row in volunteer_profiles, including the

@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#102f40" />
     <!-- Loading fonts here (instead of via CSS @import) avoids a CSS
          ordering conflict with Tailwind's own import, and is also
          the faster way to load fonts — the browser can start
@@ -12,9 +13,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Gujarati:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      try {
+        if (localStorage.getItem('nirvaan-theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      } catch (e) {}
+    </script>
     <title>Nirvaan — Help finds you</title>
   </head>
   <body>

@@ -72,7 +72,7 @@ export function Login() {
       }
 
       if (profile?.role === 'admin') {
-        navigate('/admin');
+        navigate('/map');
         return;
       }
 

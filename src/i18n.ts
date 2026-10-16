@@ -7,6 +7,7 @@
 // Landing.tsx, and RequestHelp.tsx for how that looks in practice.
 
 import i18n from 'i18next';
+import { extraResources } from './i18n-extra';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
@@ -469,6 +470,11 @@ const resources = {
   },
 };
 
+// Merge the newer UI copy (header, home, request form, live map) into the same bundles.
+for (const lng of Object.keys(extraResources) as Array<'en' | 'hi' | 'gu'>) {
+  Object.assign(resources[lng].translation, extraResources[lng]);
+}
+
 i18n
   // Detects the user's previously saved choice (via localStorage) or
   // their browser's language setting, so returning visitors don't
@@ -481,5 +487,12 @@ i18n
     fallbackLng: 'en',
     interpolation: { escapeValue: false }, // React already escapes output, so this avoids double-escaping
   });
+
+// Keeps <html lang> in sync (screen readers and fonts pick the right language from it).
+const setHtmlLang = (lng?: string) => {
+  document.documentElement.lang = (lng || 'en').split('-')[0];
+};
+i18n.on('languageChanged', setHtmlLang);
+setHtmlLang(i18n.language);
 
 export default i18n;

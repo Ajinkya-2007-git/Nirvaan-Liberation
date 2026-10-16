@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
+import { AdminTabs } from '../components/AdminTabs';
 
 interface RequestRow {
   id: string;
@@ -13,6 +14,8 @@ interface RequestRow {
   category: string | null;
   created_at: string;
   updated_at: string;
+  assigned_at: string | null;
+  resolved_at: string | null;
 }
 
 interface AssignmentRow {
@@ -123,7 +126,7 @@ export function AdminImpact() {
   // default, which is plenty for this app's scale but worth knowing if usage grows a lot.
   const load = useCallback(async () => {
     const [req, asg, vol, ngo, area] = await Promise.all([
-      supabase.from('sos_requests').select('id,status,urgency,category,created_at,updated_at'),
+      supabase.from('sos_requests').select('id,status,urgency,category,created_at,updated_at,assigned_at,resolved_at'),
       supabase.from('assignments').select('sos_request_id,assigned_at'),
       supabase.from('volunteer_profiles').select('id', { count: 'exact', head: true }).eq('available', true),
       supabase.from('ngos').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
@@ -169,12 +172,12 @@ export function AdminImpact() {
     const timesToResolve: number[] = [];
     for (const r of requests) {
       const created = new Date(r.created_at).getTime();
-      const assignedAt = firstAssigned.get(r.id);
+      // The database stamps assigned_at / resolved_at itself. Older requests (from before that
+      // existed) fall back to the assignment history and the last-updated time.
+      const assignedAt = r.assigned_at ? new Date(r.assigned_at).getTime() : firstAssigned.get(r.id);
       if (assignedAt !== undefined && assignedAt >= created) timesToAssign.push(assignedAt - created);
-      // updated_at is last touched when a request is marked resolved, so for resolved requests it
-      // approximates the resolution time (an approximation, not a dedicated timestamp).
       if (r.status === 'resolved') {
-        const resolvedAt = new Date(r.updated_at).getTime();
+        const resolvedAt = new Date(r.resolved_at ?? r.updated_at).getTime();
         if (resolvedAt >= created) timesToResolve.push(resolvedAt - created);
       }
     }
@@ -233,11 +236,12 @@ export function AdminImpact() {
   return (
     <div className="min-h-screen bg-ink">
       <Header />
+      <AdminTabs />
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-2xl font-semibold text-paper">Impact</h1>
           <div className="flex gap-4 text-sm">
-            <Link to="/admin" className="text-signal hover:underline">
+            <Link to="/map" className="text-signal hover:underline">
               ← Live map
             </Link>
             <Link to="/admin/requests" className="text-signal hover:underline">
@@ -277,7 +281,7 @@ export function AdminImpact() {
               <StatCard
                 label="Avg time to resolve"
                 value={formatDuration(stats.avgResolve)}
-                hint={`Typical (median): ${formatDuration(stats.medianResolve)} · approximate`}
+                hint={`Typical (median): ${formatDuration(stats.medianResolve)}`}
               />
               <StatCard
                 label="Responders"

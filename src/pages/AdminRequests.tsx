@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Header } from '../components/Header';
+import { AdminTabs } from '../components/AdminTabs';
 import { PhoneActions } from '../components/PhoneActions';
 import { distanceKm } from '../lib/distance';
 import type { SosRequest, VolunteerProfile, Ngo, Urgency, Category } from '../lib/types';
@@ -192,11 +193,12 @@ export function AdminRequests() {
   return (
     <div className="min-h-screen bg-ink">
       <Header />
+      <AdminTabs />
       <div className="mx-auto max-w-3xl px-6 py-10">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="font-display text-2xl font-semibold text-paper">Requests</h1>
           <div className="flex gap-4 text-sm">
-            <Link to="/admin" className="text-signal hover:underline">
+            <Link to="/map" className="text-signal hover:underline">
               ← Live map
             </Link>
             <Link to="/admin/ngos" className="text-signal hover:underline">

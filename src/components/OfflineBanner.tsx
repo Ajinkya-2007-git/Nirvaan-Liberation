@@ -15,7 +15,7 @@ export function OfflineBanner({ pendingCount }: OfflineBannerProps) {
   if (pendingCount === 0) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[2000] bg-signal-orange px-4 py-2 text-center text-sm font-medium text-white">
+    <div className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-[900] sm:bottom-0 bg-signal-orange px-4 py-2 text-center text-sm font-medium text-white">
       {/* i18next automatically picks the "_one" vs "_other" key
           variant based on the count passed in here — see
           offlineBanner.savedOffline_one/_other in i18n.ts. */}

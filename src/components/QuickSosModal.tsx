@@ -21,7 +21,7 @@ export function QuickSosModal({ status, trackingId, error, onClose }: QuickSosMo
   if (status === 'idle') return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/70 px-6">
       <div className="w-full max-w-sm rounded-xl border border-hairline bg-panel p-6 text-center">
         {(status === 'locating' || status === 'sending') && (
           <>

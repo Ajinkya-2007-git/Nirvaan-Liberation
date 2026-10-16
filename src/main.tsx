@@ -16,6 +16,9 @@ import App from './App.tsx'
 
 registerSW({ immediate: true })
 
+// Earlier versions saved database responses (phone numbers, locations) in this cache. Remove it.
+if ('caches' in window) void caches.delete('supabase-api')
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
